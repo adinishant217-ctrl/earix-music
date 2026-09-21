@@ -1,7 +1,6 @@
 package com.maxrave.simpmusic
 
 import com.maxrave.simpmusic.utils.VersionManager
-import io.sentry.Sentry
 import java.awt.BorderLayout
 import java.awt.Color
 import java.awt.Dimension
@@ -26,15 +25,6 @@ object CrashDialog {
 
     fun install() {
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
-            try {
-                // Report to Sentry if available
-                if (BuildKonfig.sentryDsn.isNotEmpty()) {
-                    Sentry.captureException(throwable)
-                }
-            } catch (_: Exception) {
-                // Sentry might not be initialized
-            }
-
             // Show crash dialog on EDT
             try {
                 if (SwingUtilities.isEventDispatchThread()) {
@@ -64,13 +54,13 @@ object CrashDialog {
 
         val stackTrace = StringWriter().also { throwable.printStackTrace(PrintWriter(it)) }.toString()
         val versionInfo = try {
-            "SimpMusic Desktop v${VersionManager.getVersionName()}"
+            "Earix Desktop v${VersionManager.getVersionName()}"
         } catch (_: Exception) {
-            "SimpMusic Desktop"
+            "Earix Desktop"
         }
 
         val dialog = JDialog().apply {
-            title = "SimpMusic - Unexpected Error"
+            title = "Earix - Unexpected Error"
             isModal = true
             defaultCloseOperation = JDialog.DISPOSE_ON_CLOSE
             preferredSize = Dimension(700, 500)
@@ -83,7 +73,7 @@ object CrashDialog {
 
         // Header
         val headerPanel = JPanel(BorderLayout(8, 4)).apply {
-            val titleLabel = JLabel("SimpMusic has crashed").apply {
+            val titleLabel = JLabel("Earix has crashed").apply {
                 font = font.deriveFont(Font.BOLD, 16f)
             }
             val subtitleLabel = JLabel(

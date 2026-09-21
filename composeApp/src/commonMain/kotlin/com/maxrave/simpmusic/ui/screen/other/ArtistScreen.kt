@@ -59,10 +59,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -84,14 +86,9 @@ import com.maxrave.simpmusic.Platform
 import com.maxrave.simpmusic.expect.ui.MediaPlayerView
 import com.maxrave.simpmusic.expect.ui.layerBackdrop
 import com.maxrave.simpmusic.expect.ui.rememberBackdrop
-import com.maxrave.simpmusic.expect.ui.toImageBitmap
 import com.maxrave.simpmusic.extension.artworkScrimBrush
-import com.maxrave.simpmusic.extension.getColorFromPalette
 import com.maxrave.simpmusic.extension.getScreenSizeInfo
 import com.maxrave.simpmusic.extension.getStringBlocking
-import com.maxrave.simpmusic.extension.hexToColorOrNull
-import com.maxrave.simpmusic.extension.rgbFactor
-import com.maxrave.simpmusic.extension.toImmersiveBackground
 import com.maxrave.simpmusic.extension.toSquareThumbnailUrl
 import com.maxrave.simpmusic.getPlatform
 import com.maxrave.simpmusic.ui.component.AddToPlaylistModalBottomSheet
@@ -190,29 +187,6 @@ fun ArtistScreen(
     val screenInfo = getScreenSizeInfo()
     val isPortrait = screenInfo.wDP < screenInfo.hDP
 
-    // Palette extraction from the artist artwork (portrait Apple-style only).
-    val paletteState = com.kmpalette.rememberPaletteState()
-    var bitmap by remember { mutableStateOf<ImageBitmap?>(null) }
-    var paletteGeneratedFor by remember { mutableStateOf<String?>(null) }
-    val currentImageUrl = (artistScreenState as? ArtistScreenState.Success)?.data?.imageUrl
-
-    LaunchedEffect(bitmap) {
-        val bm = bitmap
-        if (bm != null && currentImageUrl != null && paletteGeneratedFor != currentImageUrl) {
-            paletteState.generate(bm)
-            paletteGeneratedFor = currentImageUrl
-        }
-    }
-
-    // Apple Music-style page background from the artwork's dominant tone (see UIExt.toImmersiveBackground).
-    val mutedPaletteBg = paletteState.palette.toImmersiveBackground()
-    // Tint for the description card, matching the non-portrait CollapsingToolbar color.
-    val sectionTint = paletteState.palette.getColorFromPalette()
-
-    // Accent color for the action buttons, sourced from the artist name-logo image's dominant
-    // color (hidden catalog). Falls back to white until the logo loads (or if none exists).
-    val artistAccent = artistLogo?.bgColorHex?.hexToColorOrNull() ?: Color.White
-
     val hazeState = rememberHazeState(blurEnabled = true)
     val lazyState = rememberLazyListState()
     val firstItemVisible by remember {
@@ -241,7 +215,7 @@ fun ArtistScreen(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .background(mutedPaletteBg)
+                                .background(Color.Transparent)
                                 .hazeSource(hazeState),
                         state = lazyState,
                     ) {
@@ -308,13 +282,8 @@ fun ArtistScreen(
                                                 // would have lost far more of its height to the same crop.
                                                 contentScale =
                                                     if (isPortrait) ContentScale.FillWidth else ContentScale.Crop,
-                                                // Always decoded so the page background color can be extracted
-                                                // from the artwork palette, even when a canvas is playing.
-                                                onSuccess = {
-                                                    bitmap = it.result.image.toImageBitmap()
-                                                },
-                                                // Hidden (but still decoded above) while a canvas is present —
-                                                // the canvas is shown instead. No canvas -> artwork is shown.
+                                                // Hidden while a canvas is present — the canvas is
+                                                // shown instead. No canvas -> artwork is shown.
                                                 modifier =
                                                     Modifier
                                                         .fillMaxSize()
@@ -381,7 +350,7 @@ fun ArtistScreen(
                                                         },
                                                     )
                                                     .align(Alignment.BottomCenter)
-                                                    .background(artworkScrimBrush(mutedPaletteBg)),
+                                                    .background(artworkScrimBrush(Color(0xFF0D0618))),
                                         )
                                         // Artist name (TEXT for now — logo image is roadmap) + subscriber · view
                                         Column(
@@ -412,6 +381,7 @@ fun ArtistScreen(
                                                 Text(
                                                     text = state.data.title ?: stringResource(Res.string.unknown),
                                                     style = typo().titleLarge,
+                                                    fontWeight = FontWeight.Bold,
                                                     color = Color.White,
                                                     maxLines = 2,
                                                     textAlign = TextAlign.Center,
@@ -427,7 +397,7 @@ fun ArtistScreen(
                                                 Text(
                                                     text = meta,
                                                     style = typo().bodyMedium,
-                                                    color = Color(0xC4FFFFFF),
+                                                    color = Color(0xFFB0A5C0),
                                                     textAlign = TextAlign.Center,
                                                 )
                                             }
@@ -463,14 +433,14 @@ fun ArtistScreen(
                                     horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    // Radio — side button: outlined accent (yellow) circle with an
-                                    // accent-tinted icon over a transparent fill, matching the reference.
+                                    // Radio — side button: white circle outline with a
+                                    // purple icon over a transparent fill.
                                     Box(
                                         modifier =
                                             Modifier
                                                 .size(48.dp)
                                                 .clip(CircleShape)
-                                                .border(1.5.dp, artistAccent, CircleShape)
+                                                .border(1.5.dp, Color.White, CircleShape)
                                                 .clickable {
                                                     val param = state.data.radioParam
                                                     if (param != null) {
@@ -484,20 +454,28 @@ fun ArtistScreen(
                                         Icon(
                                             imageVector = SimpIcons.Sensors,
                                             contentDescription = "Radio",
-                                            tint = artistAccent,
+                                            tint = Color(0xFFA855F7),
                                             modifier = Modifier.size(22.dp),
                                         )
                                     }
-                                    // Shuffle — primary "play" for an artist. Circular icon button filled
-                                    // with the artist accent (white fallback); icon uses the dark page
-                                    // background color so it stays legible on a bright accent.
+                                    // Shuffle — the artist "play" button: purple gradient disc
+                                    // with glow and a white icon.
                                     Box(
                                         modifier =
                                             Modifier
                                                 .size(64.dp)
-                                                .clip(CircleShape)
-                                                .background(artistAccent)
-                                                .clickable {
+                                                .shadow(
+                                                    elevation = 12.dp,
+                                                    shape = CircleShape,
+                                                    spotColor = Color(0xFFA855F7).copy(alpha = 0.45f),
+                                                    ambientColor = Color.Transparent,
+                                                ).background(
+                                                    brush =
+                                                        Brush.horizontalGradient(
+                                                            listOf(Color(0xFFA855F7), Color(0xFF7C3AED)),
+                                                        ),
+                                                    shape = CircleShape,
+                                                ).clickable {
                                                     val param = state.data.shuffleParam
                                                     if (param != null) {
                                                         viewModel.onShuffleClick(param)
@@ -510,20 +488,19 @@ fun ArtistScreen(
                                         Icon(
                                             imageVector = SimpIcons.Shuffle,
                                             contentDescription = "Shuffle",
-                                            tint = mutedPaletteBg,
+                                            tint = Color.White,
                                             modifier = Modifier.size(28.dp),
                                         )
                                     }
-                                    // Follow — side button matching Radio: outlined accent (yellow)
-                                    // circle when not following; fills with the accent (icon flips to
-                                    // the dark page bg) once followed, so the state reads at a glance.
+                                    // Follow — white circle with purple icon when not following;
+                                    // purple fill with white icon once followed.
                                     Box(
                                         modifier =
                                             Modifier
                                                 .size(48.dp)
                                                 .clip(CircleShape)
-                                                .background(if (isFollowed) artistAccent else Color.Transparent)
-                                                .border(1.5.dp, artistAccent, CircleShape)
+                                                .background(if (isFollowed) Color(0xFFA855F7) else Color.Transparent)
+                                                .border(1.5.dp, Color(0xFFA855F7), CircleShape)
                                                 .clickable {
                                                     viewModel.updateFollowed(
                                                         if (isFollowed) 0 else 1,
@@ -535,7 +512,7 @@ fun ArtistScreen(
                                         Icon(
                                             imageVector = if (isFollowed) SimpIcons.Check else SimpIcons.PersonAdd,
                                             contentDescription = if (isFollowed) "Followed" else "Follow",
-                                            tint = if (isFollowed) mutedPaletteBg else artistAccent,
+                                            tint = if (isFollowed) Color.White else Color(0xFFA855F7),
                                             modifier = Modifier.size(22.dp),
                                         )
                                     }
@@ -547,7 +524,6 @@ fun ArtistScreen(
                                 state = state,
                                 selectionState = selectionState,
                                 playingTrack = playingTrack,
-                                descriptionTint = sectionTint,
                                 navController = navController,
                                 viewModel = viewModel,
                                 sharedViewModel = sharedViewModel,
@@ -601,8 +577,8 @@ fun ArtistScreen(
                                 Modifier.hazeEffect(hazeState) {
                                     blurEnabled = true
                                     blurRadius = 24.dp
-                                    backgroundColor = mutedPaletteBg
-                                    tints = listOf(HazeTint(mutedPaletteBg.copy(alpha = 0.55f)))
+                                    backgroundColor = Color(0xFF0D0618)
+                                    tints = listOf(HazeTint(Color(0xFF0D0618).copy(alpha = 0.55f)))
                                 },
                         )
                     }
@@ -696,7 +672,6 @@ private fun ArtistSections(
     state: ArtistScreenState.Success,
     selectionState: SongSelectionState,
     playingTrack: String?,
-    descriptionTint: Color,
     navController: NavController,
     viewModel: ArtistViewModel,
     sharedViewModel: SharedViewModel,
@@ -713,7 +688,7 @@ private fun ArtistSections(
                     Text(
                         text = stringResource(Res.string.popular),
                         style = typo().labelMedium,
-                        color = Color.White,
+                        color = Color(0xFFA855F7),
                         modifier = Modifier.weight(1f),
                     )
                     TextButton(
@@ -729,7 +704,7 @@ private fun ArtistSections(
                             ButtonDefaults
                                 .textButtonColors()
                                 .copy(
-                                    contentColor = Color.White,
+                                    contentColor = Color(0xFFA855F7),
                                 ),
                     ) {
                         Text(stringResource(Res.string.more), style = typo().bodySmall)
@@ -789,7 +764,7 @@ private fun ArtistSections(
                     Text(
                         text = stringResource(Res.string.singles),
                         style = typo().labelMedium,
-                        color = Color.White,
+                        color = Color(0xFFA855F7),
                         modifier = Modifier.weight(1f),
                     )
                     TextButton(
@@ -810,7 +785,7 @@ private fun ArtistSections(
                             ButtonDefaults
                                 .textButtonColors()
                                 .copy(
-                                    contentColor = Color.White,
+                                    contentColor = Color(0xFFA855F7),
                                 ),
                     ) {
                         Text(stringResource(Res.string.more), style = typo().bodySmall)
@@ -857,7 +832,7 @@ private fun ArtistSections(
                     Text(
                         text = stringResource(Res.string.albums),
                         style = typo().labelMedium,
-                        color = Color.White,
+                        color = Color(0xFFA855F7),
                         modifier = Modifier.weight(1f),
                     )
                     TextButton(
@@ -878,7 +853,7 @@ private fun ArtistSections(
                             ButtonDefaults
                                 .textButtonColors()
                                 .copy(
-                                    contentColor = Color.White,
+                                    contentColor = Color(0xFFA855F7),
                                 ),
                     ) {
                         Text(stringResource(Res.string.more), style = typo().bodySmall)
@@ -925,7 +900,7 @@ private fun ArtistSections(
                     Text(
                         text = stringResource(Res.string.videos),
                         style = typo().labelMedium,
-                        color = Color.White,
+                        color = Color(0xFFA855F7),
                         modifier = Modifier.weight(1f),
                     )
                     TextButton(
@@ -945,7 +920,7 @@ private fun ArtistSections(
                             ButtonDefaults
                                 .textButtonColors()
                                 .copy(
-                                    contentColor = Color.White,
+                                    contentColor = Color(0xFFA855F7),
                                 ),
                     ) {
                         Text(stringResource(Res.string.more), style = typo().bodySmall)
@@ -1011,7 +986,7 @@ private fun ArtistSections(
                     Text(
                         text = stringResource(Res.string.featured_inArtist),
                         style = typo().labelMedium,
-                        color = Color.White,
+                        color = Color(0xFFA855F7),
                         modifier =
                             Modifier
                                 .weight(1f)
@@ -1059,7 +1034,7 @@ private fun ArtistSections(
                     Text(
                         text = stringResource(Res.string.related_artists),
                         style = typo().labelMedium,
-                        color = Color.White,
+                        color = Color(0xFFA855F7),
                         modifier =
                             Modifier
                                 .weight(1f)
@@ -1118,7 +1093,7 @@ private fun ArtistSections(
             Text(
                 text = stringResource(Res.string.description),
                 style = typo().labelMedium,
-                color = Color.White,
+                color = Color(0xFFA855F7),
                 modifier =
                     Modifier
                         .weight(1f)
@@ -1127,11 +1102,18 @@ private fun ArtistSections(
         }
         val urlHandler = LocalUriHandler.current
         ElevatedCard(
-            modifier = Modifier.padding(horizontal = 20.dp),
+            modifier =
+                Modifier
+                    .padding(horizontal = 20.dp)
+                    .border(
+                        width = 1.dp,
+                        color = Color(0x33A855F7),
+                        shape = RoundedCornerShape(8.dp),
+                    ),
             shape = RoundedCornerShape(8.dp),
             colors =
                 CardDefaults.elevatedCardColors().copy(
-                    containerColor = descriptionTint.rgbFactor(0.5f),
+                    containerColor = Color(0x14A855F7),
                 ),
         ) {
             DescriptionView(

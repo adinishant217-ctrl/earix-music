@@ -116,10 +116,7 @@
     <string name="restore_your_saved_data">Herstel uw opgeslagen gegevens</string>
     <string name="about_us">Over ons</string>
     <string name="version">Versie</string>
-    <string name="github">GitHub</string>
-    <string name="maxrave_dev">maxrave-dev</string>
-    <string name="buy_me_a_coffee">Koop een koffie</string>
-    <string name="paypal">PayPal</string>
+<string name="paypal">PayPal</string>
     <string name="title">Titel</string>
     <string name="album">Album</string>
     <string name="youtube_url">Youtube-URL</string>
@@ -135,7 +132,7 @@
     <string name="albums_inArtist">Albums</string>
     <string name="singles_inArtist">Singles</string>
     <string name="fans_might_also_like_inArtist">Je bent misschien ook geïnteresseerd in</string>
-    <string name="crash_log">SimpMusic is gecrasht, excuses!\nStuur foutlog naar ontwikkelaar</string>
+    <string name="crash_log">Earix is gecrasht, excuses!\nStuur foutlog naar ontwikkelaar</string>
     <string name="crash">Crash</string>
     <string name="send">Verstuur</string>
     <string name="mail_subject">Rapporteer crash</string>
@@ -168,10 +165,6 @@
     <string name="skip_no_music_part">Geen muziekonderdeel overslaan</string>
     <string name="save_last_played">Sla laatst gespeeld op</string>
     <string name="save_last_played_track_and_queue">Sla laatst gespeelde nummer en wachtrij op</string>
-    <string name="update_available">Nieuwe update beschikbaar</string>
-    <string name="check_for_update">Controleer op update</string>
-    <string name="last_checked_at">Laatst gecontroleerd op %1$s</string>
-    <string name="checking">Controleren</string>
     <string name="sponsorblock_skip_segment">SponsorBlock: %1$s segment overslaan</string>
     <string name="sponsor">Sponsor</string>
     <string name="self_promotion">Zelf-promotie</string>
@@ -206,8 +199,7 @@
     <string name="saved_to_local_playlist">Opgeslagen in lokale afspeellijst</string>
     <string name="if_you_want_to_unsync_this_playlist_please_go_to_local_playlist">als je deze afspeellijst wilt de-synchroniseren, ga dan naar de lokale afspeellijst</string>
     <string name="log_in_to_get_YouTube_playlist">Log in om YouTube afspeellijsten op te halen</string>
-    <string name="sync_playlist_warning">SimpMusic maakt automatisch een YouTube-afspeellijst aan. Weet je het zeker?</string>
+    <string name="sync_playlist_warning">Earix maakt automatisch een YouTube-afspeellijst aan. Weet je het zeker?</string>
     <string name="syncing">Synchroniseren</string>
     <string name="unsync_playlist_warning">"Deze afspeellijst de-synchroniseren? Deze afspeellijst zal niet verwijderd worden van YouTube Muziek "</string>
-    <!-- Listen Together -->
 </resources>

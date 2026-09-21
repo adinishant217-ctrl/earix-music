@@ -29,13 +29,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
@@ -74,7 +69,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -101,12 +95,7 @@ import com.maxrave.domain.mediaservice.handler.QueueData
 import com.maxrave.domain.utils.connectArtists
 import com.maxrave.domain.utils.toSongEntity
 import com.maxrave.domain.utils.toTrack
-import com.maxrave.simpmusic.Platform
-import com.maxrave.simpmusic.extension.getScreenSizeInfo
-import com.maxrave.simpmusic.getPlatform
 import com.maxrave.simpmusic.ui.component.AddToPlaylistModalBottomSheet
-import com.maxrave.simpmusic.ui.component.CenterLoadingBox
-import com.maxrave.simpmusic.ui.component.MoodCategoryCard
 import com.maxrave.simpmusic.ui.component.rememberHolderPainter
 import com.maxrave.simpmusic.extension.getStringBlocking
 import com.maxrave.simpmusic.extension.toAppDeepLinkOrNull
@@ -116,7 +105,6 @@ import com.maxrave.simpmusic.ui.component.EndOfPage
 import com.maxrave.simpmusic.ui.component.NowPlayingBottomSheet
 import com.maxrave.simpmusic.ui.component.PlaylistFullWidthItems
 import com.maxrave.simpmusic.ui.component.ShimmerSearchItem
-import com.maxrave.simpmusic.ui.component.SimpMusicChartButton
 import com.maxrave.simpmusic.ui.component.SongFullWidthItems
 import com.maxrave.simpmusic.ui.component.selection.SelectedSongsBottomSheet
 import com.maxrave.simpmusic.ui.component.selection.SongSelectionTopAppBar
@@ -126,7 +114,6 @@ import com.maxrave.simpmusic.ui.icon.Close
 import com.maxrave.simpmusic.ui.icon.History
 import com.maxrave.simpmusic.ui.icon.Search
 import com.maxrave.simpmusic.ui.icon.SimpIcons
-import com.maxrave.simpmusic.ui.navigation.destination.home.MoodDestination
 import com.maxrave.simpmusic.ui.navigation.destination.list.AlbumDestination
 import com.maxrave.simpmusic.ui.navigation.destination.list.ArtistDestination
 import com.maxrave.simpmusic.ui.navigation.destination.list.PlaylistDestination
@@ -153,14 +140,12 @@ import simpmusic.composeapp.generated.resources.albums
 import simpmusic.composeapp.generated.resources.artists
 import simpmusic.composeapp.generated.resources.clear_search_history
 import simpmusic.composeapp.generated.resources.error_occurred
-import simpmusic.composeapp.generated.resources.everything_you_need
 import simpmusic.composeapp.generated.resources.in_search
 import simpmusic.composeapp.generated.resources.no_results_found
 import simpmusic.composeapp.generated.resources.playlists
 import simpmusic.composeapp.generated.resources.podcasts
 import simpmusic.composeapp.generated.resources.retry
 import simpmusic.composeapp.generated.resources.search_for
-import simpmusic.composeapp.generated.resources.search_for_songs_artists_albums_playlists_and_more
 import simpmusic.composeapp.generated.resources.song
 import simpmusic.composeapp.generated.resources.videos
 import simpmusic.composeapp.generated.resources.what_do_you_want_to_listen_to
@@ -172,13 +157,10 @@ fun SearchScreen(
     sharedViewModel: SharedViewModel = koinInject(),
     navController: NavController,
 ) {
-    val uriHandler = LocalUriHandler.current
     val focusManager = LocalFocusManager.current
     val searchScreenState by searchViewModel.searchScreenState.collectAsStateWithLifecycle()
     val uiState by searchViewModel.searchScreenUIState.collectAsStateWithLifecycle()
     val searchHistory by searchViewModel.searchHistory.collectAsStateWithLifecycle()
-    val moodAndGenres by searchViewModel.moodAndGenres.collectAsStateWithLifecycle()
-    val moodArtwork by searchViewModel.moodArtwork.collectAsStateWithLifecycle()
 
     var searchUIType by rememberSaveable { mutableStateOf(SearchUIType.EMPTY) }
     var searchText by rememberSaveable { mutableStateOf("") }
@@ -192,25 +174,17 @@ fun SearchScreen(
     // The bar floats OVER the content (a Box, not a Column) so there is something behind it to
     // blur — same arrangement HomeScreen uses. Each branch owns a scroll state, hoisted here so
     // the bar can tell whether the branch currently on screen is scrolled away from the top.
-    // Two columns only on a phone held upright. Anywhere wider — tablet, landscape, desktop — two
-    // columns stretch each tile to half the window, and since the tile keeps a 2:1 ratio it grows
-    // absurdly tall with it.
-    val screenInfo = getScreenSizeInfo()
-    val isMobilePortrait = getPlatform() == Platform.Android && screenInfo.wDP < screenInfo.hDP
-    val moodGridColumns = if (isMobilePortrait) 2 else 4
-
     val hazeState = rememberHazeState(blurEnabled = true)
     val suggestionsState = rememberLazyListState()
     val historyState = rememberLazyListState()
-    val moodGridState = rememberLazyGridState()
     val resultsState = rememberLazyListState()
     var searchBarHeightPx by remember { mutableIntStateOf(0) }
     val searchBarHeight = with(LocalDensity.current) { searchBarHeightPx.toDp() }
     val isContentAtTop by remember {
         derivedStateOf {
             when (searchUIType) {
-                SearchUIType.EMPTY ->
-                    moodGridState.firstVisibleItemIndex == 0 && moodGridState.firstVisibleItemScrollOffset == 0
+                // The empty screen never scrolls, so the bar stays unblurred.
+                SearchUIType.EMPTY -> true
                 SearchUIType.SEARCH_HISTORY ->
                     historyState.firstVisibleItemIndex == 0 && historyState.firstVisibleItemScrollOffset == 0
                 SearchUIType.SEARCH_SUGGESTIONS ->
@@ -457,6 +431,7 @@ fun SearchScreen(
                                     Icon(
                                         imageVector = SimpIcons.ArrowOutward,
                                         contentDescription = "Search suggestion",
+                                        tint = Color(0xFFA855F7),
                                         modifier = Modifier.size(24.dp),
                                     )
                                 }
@@ -491,14 +466,14 @@ fun SearchScreen(
                                             modifier =
                                                 Modifier
                                                     .fillMaxWidth()
-                                                    .background(MaterialTheme.colorScheme.background),
+                                                    .background(Color.Transparent),
                                         ) {
                                             TextButton(
                                                 onClick = { searchViewModel.deleteSearchHistory() },
                                             ) {
                                                 Text(
                                                     text = stringResource(Res.string.clear_search_history),
-                                                    color = MaterialTheme.colorScheme.onBackground,
+                                                    color = Color(0xFFA855F7),
                                                 )
                                             }
                                         }
@@ -531,12 +506,14 @@ fun SearchScreen(
                                     Icon(
                                         imageVector = SimpIcons.History,
                                         contentDescription = "Search history",
+                                        tint = Color(0xFFA855F7),
                                         modifier = Modifier.size(24.dp),
                                     )
                                     Spacer(modifier = Modifier.padding(horizontal = 12.dp))
                                     Text(
                                         text = historyItem,
                                         style = typo().bodyMedium,
+                                        color = Color.White,
                                     )
                                     Spacer(modifier = Modifier.weight(1f))
                                     IconButton(
@@ -548,6 +525,7 @@ fun SearchScreen(
                                         Icon(
                                             imageVector = SimpIcons.ArrowOutward,
                                             contentDescription = "Search suggestion",
+                                            tint = Color(0xFFA855F7),
                                             modifier = Modifier.size(24.dp),
                                         )
                                     }
@@ -563,101 +541,8 @@ fun SearchScreen(
                 }
 
                 SearchUIType.EMPTY -> {
-                    val mood = moodAndGenres
-                    if (mood == null) {
-                        // First run only: the repository serves its cached copy before hitting the
-                        // network, so this spinner is never seen again after the first fetch.
-                        CenterLoadingBox(Modifier.fillMaxSize())
-                    } else {
-                        // Capped and centred: on a wide desktop window the grid would otherwise
-                        // span the whole width, stretching four tiles into long bars. 1100.dp
-                        // keeps a tile near 250.dp, which is its natural size.
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.TopCenter,
-                        ) {
-                        LazyVerticalGrid(
-                            columns = GridCells.Fixed(moodGridColumns),
-                            modifier =
-                                Modifier
-                                    .fillMaxHeight()
-                                    .widthIn(max = 1100.dp)
-                                    .padding(horizontal = 16.dp),
-                            state = moodGridState,
-                            contentPadding = PaddingValues(top = searchBarHeight),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            item(span = { GridItemSpan(maxLineSpan) }) {
-                                Column(
-                                    modifier =
-                                        Modifier
-                                            .fillMaxWidth()
-                                            // Breathing room on both sides of this block: above it
-                                            // sits the floating search bar, below it the tile grid.
-                                            .padding(top = 36.dp, bottom = 20.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                ) {
-                                    Text(
-                                        text = stringResource(Res.string.everything_you_need),
-                                        style = typo().titleMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        textAlign = TextAlign.Center,
-                                        modifier = Modifier.fillMaxWidth(),
-                                    )
-                                    Spacer(modifier = Modifier.height(10.dp))
-                                    Text(
-                                        text = stringResource(Res.string.search_for_songs_artists_albums_playlists_and_more),
-                                        style = typo().bodyMedium,
-                                        textAlign = TextAlign.Center,
-                                        modifier = Modifier.fillMaxWidth(),
-                                    )
-                                    SimpMusicChartButton(
-                                        modifier = Modifier.padding(top = 10.dp),
-                                    ) {
-                                        uriHandler.openUri("https://chart.simpmusic.org")
-                                    }
-                                }
-                            }
-                            mood.sections.forEachIndexed { index, section ->
-                                // First section runs straight on from the header block above it,
-                                // so its own heading would just be a second title in a row.
-                                if (index > 0) {
-                                    item(span = { GridItemSpan(maxLineSpan) }) {
-                                        Text(
-                                            // Section titles come from YouTube already localised,
-                                            // so there is no string resource to pick here.
-                                            text = section.title,
-                                            style = typo().titleMedium,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onBackground,
-                                            modifier = Modifier.padding(top = 8.dp),
-                                        )
-                                    }
-                                }
-                                // Key must include the section: every section lives in this ONE
-                                // grid, and "For you" repeats categories that also appear under
-                                // Moods or Genres, so params alone collides.
-                                items(section.items, key = { "${section.title}/${it.params}" }) { item ->
-                                    // LazyVerticalGrid only composes tiles inside the viewport, so
-                                    // putting the request here IS the laziness — a category the
-                                    // user never scrolls to never costs a browse.
-                                    LaunchedEffect(item.params) {
-                                        searchViewModel.loadMoodArtwork(item.params)
-                                    }
-                                    MoodCategoryCard(
-                                        title = item.title,
-                                        artworkUrl = moodArtwork[item.params],
-                                    ) {
-                                        navController.navigate(MoodDestination(item.params))
-                                    }
-                                }
-                            }
-                            item(span = { GridItemSpan(maxLineSpan) }) {
-                                EndOfPage()
-                            }
-                        }
-                        }
+                    // Earix: intentionally empty until the user types.
+                    Box(modifier = Modifier.fillMaxSize()) {
                     }
                 }
 
@@ -1083,8 +968,9 @@ fun SearchScreen(
                     .focusRequester(focusRequester)
                     .onFocusChanged {
                         isFocused = it.isFocused
-                    }.padding(horizontal = 16.dp),
-            shape = RoundedCornerShape(8.dp),
+                    }
+                    .padding(horizontal = 16.dp),
+            shape = RoundedCornerShape(50),
             // See the note on SongSelectionTopAppBar above — the Column owns the status-bar inset.
             windowInsets = WindowInsets(0),
             content = {},

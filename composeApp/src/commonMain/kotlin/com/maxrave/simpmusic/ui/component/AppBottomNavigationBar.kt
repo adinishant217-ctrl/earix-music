@@ -1,15 +1,24 @@
 package com.maxrave.simpmusic.ui.component
 
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -24,25 +33,36 @@ import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.compose.currentBackStackEntryAsState
+import com.maxrave.simpmusic.ui.icon.History
+import com.maxrave.simpmusic.ui.icon.Home
+import com.maxrave.simpmusic.ui.icon.LibraryMusic
+import com.maxrave.simpmusic.ui.icon.Notifications
+import com.maxrave.simpmusic.ui.icon.Search
+import com.maxrave.simpmusic.ui.icon.Settings
+import com.maxrave.simpmusic.ui.icon.SimpIcons
 import com.maxrave.simpmusic.extension.greyScale
-import com.maxrave.simpmusic.ui.navigation.destination.home.AnalyticsDestination
 import com.maxrave.simpmusic.ui.navigation.destination.home.HomeDestination
+import com.maxrave.simpmusic.ui.navigation.destination.home.NotificationDestination
+import com.maxrave.simpmusic.ui.navigation.destination.home.RecentlySongsDestination
+import com.maxrave.simpmusic.ui.navigation.destination.home.SettingsDestination
 import com.maxrave.simpmusic.ui.navigation.destination.library.LibraryDestination
-import com.maxrave.simpmusic.ui.navigation.destination.library.MixForYouDestination
 import com.maxrave.simpmusic.ui.navigation.destination.search.SearchDestination
 import com.maxrave.simpmusic.ui.theme.typo
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
-import simpmusic.composeapp.generated.resources.*
+import simpmusic.composeapp.generated.resources.Res
+import simpmusic.composeapp.generated.resources.earix_background
+import simpmusic.composeapp.generated.resources.home
+import simpmusic.composeapp.generated.resources.library
 import kotlin.reflect.KClass
 
-/**
- * The phone bottom bar with liquid glass OFF: the same floating capsule-and-FAB form as the glass
- * bar, drawn flat. One capsule of tabs (Search stays out — it is the round button beside it, the
- * same split the glass bar makes), a sliding rounded indicator instead of the frosted blob, solid
- * theme surfaces instead of refraction. Geometry mirrors the glass bar so switching the setting
- * changes the material, not the layout: 96dp tab cap, 64dp bar, 56dp indicator and FAB.
- */
+private val EarixPurple = Color(0xFFA855F7)
+private val EarixMuted = Color(0xFFB0A5C0)
+private val PillShape = RoundedCornerShape(24.dp)
+private val CircleBtnSize = 44.dp
+private val CircleBg = Color(0x1FA855F7)
+private val CircleBorder = Color(0x33A855F7)
+
 @Composable
 fun AppBottomNavigationBar(
     startDestination: Any = HomeDestination,
@@ -53,176 +73,189 @@ fun AppBottomNavigationBar(
     reloadDestinationIfNeeded: (KClass<*>) -> Unit = { _ -> },
 ) {
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
-    // `ordinal` identifies a tab, it is NOT the position — Mix for you and Analytics sit before
-    // Library here while keeping the ordinal they were declared with, so that the numbering stays
-    // stable whether or not those tabs are present.
-    val bottomNavScreens =
-        listOfNotNull(
-            BottomNavScreen.Home,
-            BottomNavScreen.MixForYou.takeIf { showMixForYouTab },
-            BottomNavScreen.Analytics.takeIf { showAnalyticsTab },
-            BottomNavScreen.Library,
-            BottomNavScreen.Search,
-        )
+
     var selectedIndex by rememberSaveable {
         mutableIntStateOf(
             when (startDestination) {
-                is HomeDestination -> BottomNavScreen.Home.ordinal
-                is SearchDestination -> BottomNavScreen.Search.ordinal
-                is LibraryDestination -> BottomNavScreen.Library.ordinal
-                is AnalyticsDestination -> BottomNavScreen.Analytics.ordinal
-                is MixForYouDestination -> BottomNavScreen.MixForYou.ordinal
-                else -> BottomNavScreen.Home.ordinal // Default to Home if not recognized
+                is HomeDestination -> 0
+                is SearchDestination -> 1
+                is LibraryDestination -> 2
+                else -> 0
             },
         )
     }
-    // A tab can disappear from the list under the user: tracking gets turned off while Analytics is
-    // selected, or the YouTube session ends while Mix for you is. Fall back to Home in both cases so
-    // nothing is left highlighted.
+
     LaunchedEffect(showAnalyticsTab, showMixForYouTab) {
-        if ((!showAnalyticsTab && selectedIndex == BottomNavScreen.Analytics.ordinal) ||
-            (!showMixForYouTab && selectedIndex == BottomNavScreen.MixForYou.ordinal)
+        if ((!showAnalyticsTab && selectedIndex == 3) ||
+            (!showMixForYouTab && selectedIndex == 4)
         ) {
-            selectedIndex = BottomNavScreen.Home.ordinal
+            selectedIndex = 0
         }
     }
-    val selectTab: (BottomNavScreen) -> Unit = { screen ->
-        if (selectedIndex == screen.ordinal) {
-            if (currentBackStackEntry?.destination?.hierarchy?.any {
-                    it.hasRoute(screen.destination::class)
-                } == true
-            ) {
-                reloadDestinationIfNeeded(screen.destination::class)
-            } else {
-                navController.navigate(screen.destination)
+
+    fun navigateTo(destination: Any) {
+        navController.navigate(destination) {
+            popUpTo(navController.graph.startDestinationId) {
+                saveState = true
             }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
+
+    fun checkAndReload(destination: Any, clazz: KClass<*>) {
+        if (currentBackStackEntry?.destination?.hierarchy?.any {
+                it.hasRoute(clazz)
+            } == true
+        ) {
+            reloadDestinationIfNeeded(clazz)
         } else {
-            selectedIndex = screen.ordinal
-            navController.navigate(screen.destination) {
-                popUpTo(navController.graph.startDestinationId) {
-                    saveState = true
-                }
-                launchSingleTop = true
-                restoreState = true
-            }
+            navigateTo(destination)
         }
     }
 
-    // Search rides in its own circular button, so the capsule holds everything else.
-    val barTabs = bottomNavScreens.filter { it != BottomNavScreen.Search }
-
-    // The translucent switch tints the CAPSULE ITSELF, never a strip behind it — the area around
-    // the floating cluster always shows the page. ON reads the content through the pill; OFF is a
-    // solid surface. The indicator stays nearer opaque so the selection survives busy artwork.
-    val capsuleColor =
-        MaterialTheme.colorScheme.surfaceContainer.copy(alpha = if (isTranslucentBackground) 0.72f else 1f)
-    val indicatorColor =
-        MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = if (isTranslucentBackground) 0.85f else 1f)
+    val isHomeSelected = selectedIndex == 0
+    val isLibrarySelected = selectedIndex == 2
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        // One centred cluster — capsule, gap, FAB — exactly like the glass bar: fill = false keeps
-        // the capsule at its measured width, so the leftover goes around the cluster instead of
-        // wedging itself between the capsule and the search button.
-        horizontalArrangement = Arrangement.Center,
+        horizontalArrangement = Arrangement.SpaceBetween,
         modifier =
             Modifier
                 .fillMaxWidth()
                 .windowInsetsPadding(NavigationBarDefaults.windowInsets)
-                .padding(horizontal = 16.dp)
-                .padding(top = 4.dp, bottom = 8.dp),
+                .padding(horizontal = 20.dp, vertical = 12.dp),
     ) {
-        BoxWithConstraints(Modifier.weight(1f, fill = false)) {
-            // Every tab the same width, capped so two tabs on a wide screen do not stretch into
-            // slabs — the same budget rule as the glass tab bar.
-            val tabWidth = ((maxWidth - CapsuleInset * 2) / barTabs.size).coerceAtMost(FlatTabWidth)
-            val selectedPosition = barTabs.indexOfFirst { it.ordinal == selectedIndex }
-            val indicatorOffset by animateDpAsState(tabWidth * selectedPosition.coerceAtLeast(0), label = "flatBarIndicator")
+        // Left pill: Home + Library
+        Row(
+            modifier =
+                Modifier
+                    .clip(PillShape)
+                    .background(CircleBg)
+                    .border(1.dp, CircleBorder, PillShape)
+                    .padding(horizontal = 4.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Box(
                 modifier =
                     Modifier
-                        .height(FlatBarHeight)
-                        .clip(RoundedCornerShape(FlatBarHeight / 2))
-                        .background(capsuleColor)
-                        .padding(horizontal = CapsuleInset),
-                contentAlignment = Alignment.CenterStart,
+                        .size(CircleBtnSize)
+                        .clip(
+                            if (isHomeSelected) CircleShape else RoundedCornerShape(20.dp),
+                        )
+                        .background(
+                            if (isHomeSelected) EarixPurple else Color.Transparent,
+                        )
+                        .clickable {
+                            selectedIndex = 0
+                            checkAndReload(HomeDestination, HomeDestination::class)
+                        },
+                contentAlignment = Alignment.Center,
             ) {
-                // The sliding indicator — the flat stand-in for the glass bar's frosted blob. Hidden
-                // while Search (a non-capsule tab) is the selection, so nothing sits half-lit.
-                if (selectedPosition >= 0) {
-                    Box(
-                        modifier =
-                            Modifier
-                                .offset(x = indicatorOffset)
-                                .size(width = tabWidth, height = FlatIndicatorHeight)
-                                .clip(RoundedCornerShape(FlatIndicatorHeight / 2))
-                                .background(indicatorColor),
-                    )
-                }
-                Row {
-                    barTabs.forEach { screen ->
-                        val selected = selectedIndex == screen.ordinal
-                        val contentColor =
-                            if (selected) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            }
-                        Column(
-                            modifier =
-                                Modifier
-                                    .width(tabWidth)
-                                    .fillMaxHeight()
-                                    .clip(RoundedCornerShape(FlatIndicatorHeight / 2))
-                                    .clickable { selectTab(screen) },
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center,
-                        ) {
-                            CompositionLocalProvider(LocalContentColor provides contentColor) {
-                                screen.icon()
-                            }
-                            Text(
-                                stringResource(screen.title),
-                                style = typo().bodySmall,
-                                color = contentColor,
-                                maxLines = 1,
-                            )
-                        }
-                    }
-                }
+                Icon(
+                    imageVector = SimpIcons.Home,
+                    contentDescription = stringResource(Res.string.home),
+                    tint = if (isHomeSelected) Color.White else EarixMuted,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+            Box(
+                modifier =
+                    Modifier
+                        .size(CircleBtnSize)
+                        .clip(
+                            if (isLibrarySelected) CircleShape else RoundedCornerShape(20.dp),
+                        )
+                        .background(
+                            if (isLibrarySelected) EarixPurple else Color.Transparent,
+                        )
+                        .clickable {
+                            selectedIndex = 2
+                            checkAndReload(LibraryDestination, LibraryDestination::class)
+                        },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = SimpIcons.LibraryMusic,
+                    contentDescription = stringResource(Res.string.library),
+                    tint = if (isLibrarySelected) Color.White else EarixMuted,
+                    modifier = Modifier.size(22.dp),
+                )
             }
         }
-        Spacer(Modifier.size(12.dp))
-        val searchSelected = selectedIndex == BottomNavScreen.Search.ordinal
+
+        // Center circles: Search, History, Notification
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            CircleNavButton(
+                icon = SimpIcons.Search,
+                isSelected = selectedIndex == 1,
+                onClick = {
+                    selectedIndex = 1
+                    navigateTo(SearchDestination)
+                },
+            )
+            CircleNavButton(
+                icon = SimpIcons.History,
+                isSelected = false,
+                onClick = { navigateTo(RecentlySongsDestination) },
+            )
+            CircleNavButton(
+                icon = SimpIcons.Notifications,
+                isSelected = false,
+                onClick = { navigateTo(NotificationDestination) },
+            )
+        }
+
+        // Right: Settings FAB
         Box(
             modifier =
                 Modifier
-                    .size(FlatIndicatorHeight)
+                    .size(CircleBtnSize)
                     .clip(CircleShape)
-                    .background(if (searchSelected) indicatorColor else capsuleColor)
-                    .clickable { selectTab(BottomNavScreen.Search) },
+                    .background(CircleBg)
+                    .border(1.dp, CircleBorder, CircleShape)
+                    .clickable { navigateTo(SettingsDestination) },
             contentAlignment = Alignment.Center,
         ) {
-            CompositionLocalProvider(
-                LocalContentColor provides
-                    if (searchSelected) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-            ) {
-                BottomNavScreen.Search.icon()
-            }
+            Icon(
+                imageVector = SimpIcons.Settings,
+                contentDescription = null,
+                tint = EarixMuted,
+                modifier = Modifier.size(22.dp),
+            )
         }
     }
 }
 
-// Mirrors the glass tab bar's geometry (TabWidth/BarHeight/BlobHeight/BarInset in
-// LiquidGlassTabBar.android.kt) so the two bars are one form in two materials.
-private val FlatTabWidth = 96.dp
-private val FlatBarHeight = 64.dp
-private val FlatIndicatorHeight = 56.dp
-private val CapsuleInset = 6.dp
+@Composable
+private fun CircleNavButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier =
+            Modifier
+                .size(CircleBtnSize)
+                .clip(CircleShape)
+                .background(if (isSelected) EarixPurple else CircleBg)
+                .then(
+                    if (!isSelected) Modifier.border(1.dp, CircleBorder, CircleShape) else Modifier,
+                )
+                .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = if (isSelected) Color.White else EarixMuted,
+            modifier = Modifier.size(20.dp),
+        )
+    }
+}
 
 @Composable
 fun AppNavigationRail(
@@ -233,7 +266,6 @@ fun AppNavigationRail(
     reloadDestinationIfNeeded: (KClass<*>) -> Unit = { _ -> },
 ) {
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
-    // See the note in AppBottomNavigationBar: `ordinal` is the tab's identity, not its position.
     val bottomNavScreens =
         listOfNotNull(
             BottomNavScreen.Home,
@@ -248,15 +280,12 @@ fun AppNavigationRail(
                 is HomeDestination -> BottomNavScreen.Home.ordinal
                 is SearchDestination -> BottomNavScreen.Search.ordinal
                 is LibraryDestination -> BottomNavScreen.Library.ordinal
-                is AnalyticsDestination -> BottomNavScreen.Analytics.ordinal
-                is MixForYouDestination -> BottomNavScreen.MixForYou.ordinal
-                else -> BottomNavScreen.Home.ordinal // Default to Home if not recognized
+                is com.maxrave.simpmusic.ui.navigation.destination.home.AnalyticsDestination -> BottomNavScreen.Analytics.ordinal
+                is com.maxrave.simpmusic.ui.navigation.destination.library.MixForYouDestination -> BottomNavScreen.MixForYou.ordinal
+                else -> BottomNavScreen.Home.ordinal
             },
         )
     }
-    // A tab can disappear from the list under the user: tracking gets turned off while Analytics is
-    // selected, or the YouTube session ends while Mix for you is. Fall back to Home in both cases so
-    // nothing is left highlighted.
     LaunchedEffect(showAnalyticsTab, showMixForYouTab) {
         if ((!showAnalyticsTab && selectedIndex == BottomNavScreen.Analytics.ordinal) ||
             (!showMixForYouTab && selectedIndex == BottomNavScreen.MixForYou.ordinal)
@@ -264,7 +293,7 @@ fun AppNavigationRail(
             selectedIndex = BottomNavScreen.Home.ordinal
         }
     }
-    NavigationRail {
+    androidx.compose.material3.NavigationRail {
         Spacer(Modifier.height(16.dp))
         Box(Modifier.padding(horizontal = 16.dp)) {
             Box(
@@ -275,7 +304,7 @@ fun AppNavigationRail(
                 contentAlignment = Alignment.Center,
             ) {
                 Image(
-                    painter = painterResource(Res.drawable.mono),
+                    painter = painterResource(Res.drawable.earix_background),
                     contentDescription = null,
                     modifier =
                         Modifier
@@ -286,10 +315,10 @@ fun AppNavigationRail(
         }
         Spacer(Modifier.weight(1f))
         bottomNavScreens.forEach { screen ->
-            NavigationRailItem(
+            androidx.compose.material3.NavigationRailItem(
                 icon = screen.icon,
                 label = {
-                    Text(
+                    androidx.compose.material3.Text(
                         stringResource(screen.title),
                         style =
                             if (selectedIndex == screen.ordinal) {

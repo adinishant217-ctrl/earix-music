@@ -49,14 +49,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -66,7 +67,6 @@ import coil3.compose.LocalPlatformContext
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import com.kmpalette.rememberPaletteState
 import com.kyant.backdrop.highlight.Highlight
 import com.maxrave.simpmusic.ui.component.DownloadingIndicator
 import com.maxrave.domain.data.entities.DownloadState
@@ -74,11 +74,8 @@ import com.maxrave.domain.data.model.browse.album.Track
 import com.maxrave.domain.utils.toSongEntity
 import com.maxrave.simpmusic.expect.ui.layerBackdrop
 import com.maxrave.simpmusic.expect.ui.rememberBackdrop
-import com.maxrave.simpmusic.expect.ui.toImageBitmap
 import com.maxrave.simpmusic.extension.artworkScrimBrush
-import com.maxrave.simpmusic.extension.getColorFromPalette
 import com.maxrave.simpmusic.extension.getScreenSizeInfo
-import com.maxrave.simpmusic.extension.toImmersiveBackground
 import com.maxrave.simpmusic.ui.component.AddToPlaylistModalBottomSheet
 import com.maxrave.simpmusic.ui.component.CenterLoadingBox
 import com.maxrave.simpmusic.ui.component.DescriptionView
@@ -104,7 +101,6 @@ import com.maxrave.simpmusic.ui.icon.Shuffle
 import com.maxrave.simpmusic.ui.icon.SimpIcons
 import com.maxrave.simpmusic.ui.navigation.destination.list.AlbumDestination
 import com.maxrave.simpmusic.ui.navigation.destination.list.ArtistDestination
-import com.maxrave.simpmusic.ui.theme.seed
 import com.maxrave.simpmusic.ui.theme.typo
 import com.maxrave.simpmusic.viewModel.AlbumViewModel
 import com.maxrave.simpmusic.viewModel.LocalPlaylistState
@@ -115,8 +111,6 @@ import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.painterResource
@@ -178,47 +172,17 @@ fun AlbumScreen(
     LaunchedEffect(key1 = firstItemVisible) {
         shouldHideTopBar = !firstItemVisible
     }
-    val paletteState = rememberPaletteState()
     val hazeState =
         rememberHazeState(
             blurEnabled = true,
         )
-    var bitmap by remember {
-        mutableStateOf<ImageBitmap?>(null)
-    }
-    // Track which thumbnail URL we've already extracted a palette from.
-    // Prevents palette flash when LazyColumn recycles the header item on scroll —
-    // AsyncImage re-mount fires onSuccess again, but we skip the regenerate.
-    var paletteGeneratedFor by remember {
-        mutableStateOf<String?>(null)
-    }
-
-    LaunchedEffect(bitmap) {
-        val bm = bitmap
-        if (bm != null && paletteGeneratedFor != uiState.thumbnail) {
-            paletteState.generate(bm)
-            paletteGeneratedFor = uiState.thumbnail
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        snapshotFlow { paletteState.palette }
-            .distinctUntilChanged()
-            .collectLatest {
-                viewModel.setBrush(listOf(it.getColorFromPalette(), Color.Black))
-            }
-    }
 
     // Apple Music-inspired immersive treatment. Which header is used depends on the window's
     // aspect ratio alone, not on the platform: a portrait window (a phone held upright, or a
     // narrow desktop window) gets the edge-to-edge artwork header, a landscape one gets the
-    // side-by-side header. Everything else on the page — the palette background, the row
-    // dividers, the blurred top bar — is shared by both.
+    // side-by-side header. The page background is the global cosmic theme.
     val screenInfo = getScreenSizeInfo()
     val isPortrait = screenInfo.wDP < screenInfo.hDP
-    val dominantColor = uiState.colors.firstOrNull() ?: Color.Black
-    // Apple Music-style page background from the artwork's dominant tone (see UIExt.toImmersiveBackground).
-    val mutedPaletteBg = paletteState.palette.toImmersiveBackground()
 
     Crossfade(uiState.loadState) {
         when (it) {
@@ -227,7 +191,7 @@ fun AlbumScreen(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .background(mutedPaletteBg)
+                            .background(Color.Transparent)
                             .hazeSource(hazeState),
                     state = lazyState,
                 ) {
@@ -275,9 +239,7 @@ fun AlbumScreen(
                                                     error = rememberHolderPainter(),
                                                     contentDescription = null,
                                                     contentScale = ContentScale.Crop,
-                                                    onSuccess = {
-                                                        bitmap = it.result.image.toImageBitmap()
-                                                    },
+
                                                     modifier = Modifier.fillMaxSize(),
                                                 )
                                                 // Subtle bottom gradient — keeps artwork visible behind
@@ -292,7 +254,7 @@ fun AlbumScreen(
                                                             .fillMaxWidth()
                                                             .height((screenInfo.hDP * 0.35f).dp)
                                                             .align(Alignment.BottomCenter)
-                                                            .background(artworkScrimBrush(mutedPaletteBg)),
+                                                            .background(artworkScrimBrush(Color(0xFF0D0618))),
                                                 )
                                                 // Title/artist/year overlay (centered horizontally like Apple Music)
                                                 Column(
@@ -431,9 +393,7 @@ fun AlbumScreen(
                                                         error = rememberHolderPainter(),
                                                         contentDescription = null,
                                                         contentScale = ContentScale.Crop,
-                                                        onSuccess = {
-                                                            bitmap = it.result.image.toImageBitmap()
-                                                        },
+
                                                         modifier =
                                                             Modifier
                                                                 .size(280.dp)
@@ -445,6 +405,7 @@ fun AlbumScreen(
                                                         Text(
                                                             text = uiState.title,
                                                             style = typo().headlineSmall,
+                                                            fontWeight = FontWeight.Bold,
                                                             color = Color.White,
                                                             maxLines = 2,
                                                         )
@@ -452,9 +413,7 @@ fun AlbumScreen(
                                                         Text(
                                                             text = uiState.artist.name,
                                                             style = typo().titleMedium,
-                                                            // The app accent, standing in for the brand red
-                                                            // Apple uses on this line.
-                                                            color = seed,
+                                                            color = Color.White,
                                                             modifier =
                                                                 Modifier.clickable {
                                                                     uiState.artist.id?.let { channelId ->
@@ -475,7 +434,7 @@ fun AlbumScreen(
                                                                     stringResource(Res.string.album),
                                                                 ),
                                                             style = typo().labelMedium,
-                                                            color = Color(0xC4FFFFFF),
+                                                            color = Color(0xFFB0A5C0),
                                                         )
                                                         Spacer(modifier = Modifier.height(20.dp))
                                                         // Apple Music-style action row:
@@ -495,15 +454,23 @@ fun AlbumScreen(
                                                                 modifier =
                                                                     Modifier
                                                                         .size(48.dp)
-                                                                        .clip(CircleShape)
-                                                                        .background(Color.White.copy(alpha = 0.12f))
-                                                                        .clickable { viewModel.shuffle() },
+                                                                        .shadow(
+                                                                            elevation = 8.dp,
+                                                                            shape = CircleShape,
+                                                                            spotColor = Color(0xFFA855F7).copy(alpha = 0.45f),
+                                                                            ambientColor = Color.Transparent,
+                                                                        ).background(
+                                                                            brush = Brush.horizontalGradient(
+                                                                                listOf(Color(0xFFA855F7), Color(0xFF7C3AED)),
+                                                                            ),
+                                                                            shape = CircleShape,
+                                                                        ).clickable { viewModel.shuffle() },
                                                                 contentAlignment = Alignment.Center,
                                                             ) {
                                                                 Icon(
                                                                     imageVector = SimpIcons.Shuffle,
                                                                     contentDescription = "Shuffle",
-                                                                    tint = Color.White,
+                                                                    tint = Color(0xFFA855F7),
                                                                     modifier = Modifier.size(22.dp),
                                                                 )
                                                             }
@@ -512,9 +479,17 @@ fun AlbumScreen(
                                                                     Modifier
                                                                         .height(48.dp)
                                                                         .widthIn(min = 110.dp)
-                                                                        .clip(CircleShape)
-                                                                        .background(Color.White)
-                                                                        .clickable {
+                                                                        .shadow(
+                                                                            elevation = 8.dp,
+                                                                            shape = CircleShape,
+                                                                            spotColor = Color(0xFFA855F7).copy(alpha = 0.45f),
+                                                                            ambientColor = Color.Transparent,
+                                                                        ).background(
+                                                                            brush = Brush.horizontalGradient(
+                                                                                listOf(Color(0xFFA855F7), Color(0xFF7C3AED)),
+                                                                            ),
+                                                                            shape = CircleShape,
+                                                                        ).clickable {
                                                                             if (isThisPlaying) {
                                                                                 sharedViewModel.onUIEvent(UIEvent.PlayPause)
                                                                             } else {
@@ -530,13 +505,13 @@ fun AlbumScreen(
                                                                         imageVector =
                                                                             if (isThisPlaying) SimpIcons.Pause else SimpIcons.PlayArrow,
                                                                         contentDescription = null,
-                                                                        tint = Color.Black,
+                                                                        tint = Color.White,
                                                                         modifier = Modifier.size(22.dp),
                                                                     )
                                                                     Spacer(modifier = Modifier.width(4.dp))
                                                                     Text(
                                                                         text = if (isThisPlaying) "Pause" else "Play",
-                                                                        color = Color.Black,
+                                                                        color = Color.White,
                                                                         style = typo().labelLarge,
                                                                     )
                                                                 }
@@ -546,7 +521,7 @@ fun AlbumScreen(
                                                                     Modifier
                                                                         .size(48.dp)
                                                                         .clip(CircleShape)
-                                                                        .background(Color.White.copy(alpha = 0.12f)),
+                                                                        .background(Color.White),
                                                                 contentAlignment = Alignment.Center,
                                                             ) {
                                                                 Crossfade(targetState = uiState.downloadState) { state ->
@@ -604,7 +579,7 @@ fun AlbumScreen(
                                                                             ) {
                                                                                 Icon(
                                                                                     imageVector = SimpIcons.DownloadForOffline,
-                                                                                    tint = Color.White,
+                                                                                    tint = Color(0xFFA855F7),
                                                                                     contentDescription = "Download",
                                                                                     modifier = Modifier.size(22.dp),
                                                                                 )
@@ -700,14 +675,14 @@ fun AlbumScreen(
                                                             Modifier
                                                                 .size(48.dp)
                                                                 .clip(CircleShape)
-                                                                .background(Color.White.copy(alpha = 0.12f))
+                                                                .background(Color.White)
                                                                 .clickable { viewModel.shuffle() },
                                                         contentAlignment = Alignment.Center,
                                                     ) {
                                                         Icon(
                                                             imageVector = SimpIcons.Shuffle,
                                                             contentDescription = "Shuffle",
-                                                            tint = Color.White,
+                                                            tint = Color(0xFFA855F7),
                                                             modifier = Modifier.size(22.dp),
                                                         )
                                                     }
@@ -734,13 +709,13 @@ fun AlbumScreen(
                                                                 imageVector =
                                                                     if (isThisPlaying) SimpIcons.Pause else SimpIcons.PlayArrow,
                                                                 contentDescription = null,
-                                                                tint = Color.Black,
+                                                                tint = Color.White,
                                                                 modifier = Modifier.size(22.dp),
                                                             )
                                                             Spacer(modifier = Modifier.width(4.dp))
                                                             Text(
                                                                 text = if (isThisPlaying) "Pause" else "Play",
-                                                                color = Color.Black,
+                                                                color = Color.White,
                                                                 style = typo().labelLarge,
                                                             )
                                                         }
@@ -750,7 +725,7 @@ fun AlbumScreen(
                                                             Modifier
                                                                 .size(48.dp)
                                                                 .clip(CircleShape)
-                                                                .background(Color.White.copy(alpha = 0.12f)),
+                                                                .background(Color.White),
                                                         contentAlignment = Alignment.Center,
                                                     ) {
                                                         Crossfade(targetState = uiState.downloadState) { state ->
@@ -808,7 +783,7 @@ fun AlbumScreen(
                                                                     ) {
                                                                         Icon(
                                                                             imageVector = SimpIcons.DownloadForOffline,
-                                                                            tint = Color.White,
+                                                                            tint = Color(0xFFA855F7),
                                                                             contentDescription = "Download",
                                                                             modifier = Modifier.size(22.dp),
                                                                         )
@@ -885,7 +860,7 @@ fun AlbumScreen(
                                     HorizontalDivider(
                                         modifier = Modifier.padding(start = 72.dp, end = 16.dp),
                                         thickness = 0.5.dp,
-                                        color = Color.White.copy(alpha = 0.12f),
+                                        color = Color(0x26A855F7),
                                     )
                                 }
                             }
@@ -898,6 +873,7 @@ fun AlbumScreen(
                                 Text(
                                     text = stringResource(Res.string.other_version),
                                     style = typo().labelMedium,
+                                    color = Color(0xFFA855F7),
                                     modifier =
                                         Modifier.padding(
                                             horizontal = 24.dp,
@@ -972,8 +948,8 @@ fun AlbumScreen(
                             Modifier.hazeEffect(hazeState) {
                                 blurEnabled = true
                                 blurRadius = 24.dp
-                                backgroundColor = mutedPaletteBg
-                                tints = listOf(HazeTint(mutedPaletteBg.copy(alpha = 0.55f)))
+                                backgroundColor = Color(0xFF0D0618)
+                                tints = listOf(HazeTint(Color(0xFF0D0618).copy(alpha = 0.55f)))
                             },
                     )
                 }
@@ -992,8 +968,8 @@ fun AlbumScreen(
                             Modifier.hazeEffect(hazeState) {
                                 blurEnabled = true
                                 blurRadius = 24.dp
-                                backgroundColor = mutedPaletteBg
-                                tints = listOf(HazeTint(mutedPaletteBg.copy(alpha = 0.55f)))
+                                backgroundColor = Color(0xFF0D0618)
+                                tints = listOf(HazeTint(Color(0xFF0D0618).copy(alpha = 0.55f)))
                             },
                     )
                 }

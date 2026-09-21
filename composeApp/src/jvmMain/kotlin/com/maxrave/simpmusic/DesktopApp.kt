@@ -41,10 +41,9 @@ import com.maxrave.simpmusic.ui.mini_player.MiniPlayerManager
 import com.maxrave.simpmusic.ui.mini_player.MiniPlayerWindow
 import com.maxrave.simpmusic.ui.theme.isDarkTheme
 import com.maxrave.simpmusic.utils.VersionManager
+import com.maxrave.logger.Logger
 import com.maxrave.simpmusic.viewModel.SharedViewModel
 import com.maxrave.simpmusic.viewModel.changeLanguageNative
-import io.sentry.Sentry
-import io.sentry.SentryLevel
 import java.awt.event.WindowAdapter
 import java.awt.event.WindowEvent
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -200,13 +199,6 @@ fun runDesktopApp(args: Array<String> = emptyArray()) {
 
     VersionManager.initialize()
     configLastfm(BuildKonfig.lastfmApiKey, BuildKonfig.lastfmSecret)
-    if (BuildKonfig.sentryDsn.isNotEmpty()) {
-        Sentry.init { options ->
-            options.dsn = BuildKonfig.sentryDsn
-            options.release = "simpmusic-desktop@${VersionManager.getVersionName()}"
-            options.setDiagnosticLevel(SentryLevel.ERROR)
-        }
-    }
 
     val mediaPlayerHandler by inject<MediaPlayerHandler>(MediaPlayerHandler::class.java)
     mediaPlayerHandler.showToast = { type ->
@@ -223,9 +215,7 @@ fun runDesktopApp(args: Array<String> = emptyArray()) {
         )
     }
     mediaPlayerHandler.pushPlayerError = { error ->
-        Sentry.withScope { scope ->
-            Sentry.captureMessage("Player Error: ${error.message}, code: ${error.errorCode}, code name: ${error.errorCodeName}")
-        }
+        Logger.w("DesktopApp", "Player Error: ${error.message}, code: ${error.errorCode}, code name: ${error.errorCodeName}")
     }
 
     // Register simpmusic:// protocol handler on Windows (HKCU, no admin needed)
@@ -235,9 +225,6 @@ fun runDesktopApp(args: Array<String> = emptyArray()) {
     desktopNotificationManager.initialize()
 
     val sharedViewModel = getKoin().get<SharedViewModel>()
-    if (sharedViewModel.shouldCheckForUpdate()) {
-        sharedViewModel.checkForUpdate()
-    }
 
     // Connect deep link handler to SharedViewModel
     DesktopDeepLinkHandler.listener = { intent ->

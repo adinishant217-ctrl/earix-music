@@ -7,7 +7,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,7 +22,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
@@ -53,6 +51,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
@@ -67,22 +66,17 @@ import com.maxrave.logger.Logger
 import com.maxrave.simpmusic.extension.copy
 import com.maxrave.simpmusic.extension.isScrollingUp
 import com.maxrave.simpmusic.ui.component.AddToPlaylistModalBottomSheet
-import com.maxrave.simpmusic.ui.component.Chip
 import com.maxrave.simpmusic.ui.component.EndOfPage
 import com.maxrave.simpmusic.ui.component.GridLibraryPlaylist
 import com.maxrave.simpmusic.ui.component.LibraryItem
 import com.maxrave.simpmusic.ui.component.LibraryItemState
 import com.maxrave.simpmusic.ui.component.LibraryItemType
 import com.maxrave.simpmusic.ui.component.LibraryTilingBox
-import com.maxrave.simpmusic.ui.component.ListenTogetherIconButton
-import com.maxrave.simpmusic.ui.component.RippleIconButton
 import com.maxrave.simpmusic.ui.component.selection.SelectedSongsBottomSheet
 import com.maxrave.simpmusic.ui.component.selection.SongSelectionTopAppBar
 import com.maxrave.simpmusic.ui.component.selection.rememberSongSelectionState
-import com.maxrave.simpmusic.ui.icon.Groups
 import com.maxrave.simpmusic.ui.icon.PeopleAlt
 import com.maxrave.simpmusic.ui.icon.SimpIcons
-import com.maxrave.simpmusic.ui.navigation.destination.home.ListenTogetherDestination
 import com.maxrave.simpmusic.ui.theme.typo
 import com.maxrave.simpmusic.viewModel.LibraryViewModel
 import com.maxrave.simpmusic.viewModel.SongSelectionViewModel
@@ -98,13 +92,8 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import simpmusic.composeapp.generated.resources.Res
-import simpmusic.composeapp.generated.resources.chart
 import simpmusic.composeapp.generated.resources.create
-import simpmusic.composeapp.generated.resources.downloaded_playlists
-import simpmusic.composeapp.generated.resources.favorite_playlists
-import simpmusic.composeapp.generated.resources.favorite_podcasts
 import simpmusic.composeapp.generated.resources.library
-import simpmusic.composeapp.generated.resources.mix_for_you
 import simpmusic.composeapp.generated.resources.no_YouTube_playlists
 import simpmusic.composeapp.generated.resources.no_charts_found
 import simpmusic.composeapp.generated.resources.no_favorite_playlists
@@ -113,11 +102,6 @@ import simpmusic.composeapp.generated.resources.no_playlists_added
 import simpmusic.composeapp.generated.resources.no_playlists_downloaded
 import simpmusic.composeapp.generated.resources.playlist_name
 import simpmusic.composeapp.generated.resources.playlist_name_cannot_be_empty
-import simpmusic.composeapp.generated.resources.simpmusic_charts
-import simpmusic.composeapp.generated.resources.wrapped
-import simpmusic.composeapp.generated.resources.your_library
-import simpmusic.composeapp.generated.resources.your_playlists
-import simpmusic.composeapp.generated.resources.your_youtube_playlists
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalHazeMaterialsApi::class)
 @Composable
@@ -164,7 +148,6 @@ fun LibraryScreen(
         viewModel.getRecentlyAdded()
     }
 
-    val chipRowState = rememberScrollState()
     val currentFilter by viewModel.currentScreen.collectAsStateWithLifecycle()
 
     LaunchedEffect(currentFilter) {
@@ -459,17 +442,30 @@ fun LibraryScreen(
     ) {
         TopAppBar(
             title = {
-                Text(
-                    text = stringResource(Res.string.library),
-                    style = typo().titleMedium,
-                    color = MaterialTheme.colorScheme.onBackground,
-                )
+                Column {
+                    Text(
+                        text = stringResource(Res.string.library),
+                        style = typo().titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                    )
+                    Box(
+                        modifier =
+                            Modifier
+                                .padding(top = 2.dp)
+                                .size(width = 24.dp, height = 2.dp)
+                                .background(
+                                    Color(0xFFA855F7),
+                                    shape = RoundedCornerShape(1.dp),
+                                ),
+                    )
+                }
             },
             colors =
                 TopAppBarDefaults.topAppBarColors(
                     containerColor = Color.Transparent,
                 ),
-            navigationIcon = {
+            actions = {
                 AnimatedVisibility(
                     !accountThumbnail.isNullOrEmpty(),
                     modifier = Modifier.padding(horizontal = 12.dp),
@@ -493,11 +489,6 @@ fun LibraryScreen(
                     )
                 }
             },
-            // The Library bar had no actions slot at all — added for the Listen Together entry,
-            // which the design canvas puts on Home AND Library.
-            actions = {
-                ListenTogetherIconButton { navController.navigate(ListenTogetherDestination) }
-            },
         )
         AnimatedVisibility(visible = selectionState.isActive) {
             SongSelectionTopAppBar(
@@ -519,48 +510,6 @@ fun LibraryScreen(
                 containerColor = Color.Transparent,
                 contentColor = MaterialTheme.colorScheme.onBackground,
             )
-        }
-        Row(
-            modifier =
-                Modifier
-                    .horizontalScroll(chipRowState)
-                    .padding(horizontal = 15.dp)
-                    .padding(bottom = 8.dp)
-                    .background(Color.Transparent),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            LibraryChipType.entries.forEach { type ->
-                // Mix for you left this row for a tab of its own.
-                if (type == LibraryChipType.YOUTUBE_MIX_FOR_YOU) {
-                    return@forEach
-                }
-                if (type == LibraryChipType.YOUTUBE_MUSIC_PLAYLIST && !loggedIn) {
-                    return@forEach
-                }
-                // Nothing to recap without the plays — gated exactly as the YouTube chip above
-                // is gated on being logged in.
-                if (type == LibraryChipType.WRAPPED && !localTrackingEnabled) {
-                    return@forEach
-                }
-                Chip(
-                    isAnimated = false,
-                    isSelected = type == currentFilter,
-                    text =
-                        when (type) {
-                            LibraryChipType.YOUR_LIBRARY -> stringResource(Res.string.your_library)
-                            LibraryChipType.YOUTUBE_MUSIC_PLAYLIST -> stringResource(Res.string.your_youtube_playlists)
-                            LibraryChipType.YOUTUBE_MIX_FOR_YOU -> stringResource(Res.string.mix_for_you)
-                            LibraryChipType.LOCAL_PLAYLIST -> stringResource(Res.string.your_playlists)
-                            LibraryChipType.FAVORITE_PLAYLIST -> stringResource(Res.string.favorite_playlists)
-                            LibraryChipType.DOWNLOADED_PLAYLIST -> stringResource(Res.string.downloaded_playlists)
-                            LibraryChipType.FAVORITE_PODCAST -> stringResource(Res.string.favorite_podcasts)
-                            LibraryChipType.CHART -> stringResource(Res.string.simpmusic_charts)
-                            LibraryChipType.WRAPPED -> stringResource(Res.string.wrapped)
-                        },
-                ) {
-                    viewModel.setCurrentScreen(type)
-                }
-            }
         }
         if (showSelectionSheet) {
             val selectedIds = selectionState.selected.toList()

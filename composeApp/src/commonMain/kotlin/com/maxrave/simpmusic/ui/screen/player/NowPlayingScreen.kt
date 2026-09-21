@@ -757,6 +757,8 @@ fun NowPlayingScreenContent(
             NowPlayingContentSpotify(
                 state = state,
                 actions = actions,
+                navController = navController,
+                sharedViewModel = sharedViewModel,
             )
     }
 }

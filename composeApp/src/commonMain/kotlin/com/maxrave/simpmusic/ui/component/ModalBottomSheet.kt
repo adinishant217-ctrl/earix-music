@@ -9,6 +9,8 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.MarqueeAnimationMode
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
@@ -156,7 +158,6 @@ import com.maxrave.simpmusic.ui.icon.PlayCircle
 import com.maxrave.simpmusic.ui.icon.PlaylistAdd
 import com.maxrave.simpmusic.ui.icon.QueueMusic
 import com.maxrave.simpmusic.ui.icon.Remove
-import com.maxrave.simpmusic.ui.icon.Sensors
 import com.maxrave.simpmusic.ui.icon.Share
 import com.maxrave.simpmusic.ui.icon.SimpIcons
 import com.maxrave.simpmusic.ui.icon.Speed
@@ -185,6 +186,7 @@ import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import simpmusic.composeapp.generated.resources.Res
+import simpmusic.composeapp.generated.resources.earix_background
 import simpmusic.composeapp.generated.resources.add_to_a_playlist
 import simpmusic.composeapp.generated.resources.add_to_queue
 import simpmusic.composeapp.generated.resources.album
@@ -241,7 +243,6 @@ import simpmusic.composeapp.generated.resources.playlist_name_cannot_be_empty
 import simpmusic.composeapp.generated.resources.plays
 import simpmusic.composeapp.generated.resources.processing
 import simpmusic.composeapp.generated.resources.queue
-import simpmusic.composeapp.generated.resources.radio
 import simpmusic.composeapp.generated.resources.save
 import simpmusic.composeapp.generated.resources.save_to_local_playlist
 import simpmusic.composeapp.generated.resources.saved_to_local_playlist
@@ -1658,12 +1659,26 @@ fun NowPlayingBottomSheet(
                         .fillMaxWidth()
                         .wrapContentHeight(),
                 shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp),
-                colors = CardDefaults.cardColors().copy(containerColor = rememberSurfaceDarkColors().container),
+                colors = CardDefaults.cardColors().copy(containerColor = Color.Transparent),
             ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.verticalScroll(rememberScrollState()),
-                ) {
+                // Earix cosmic backdrop: nebula image + dark purple overlay.
+                Box {
+                    Image(
+                        painter = painterResource(Res.drawable.earix_background),
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                        alpha = 0.6f,
+                    )
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            .background(Color(0xD91A0B2E)),
+                    )
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.verticalScroll(rememberScrollState()),
+                    ) {
                     Spacer(modifier = Modifier.height(5.dp))
                     Card(
                         modifier =
@@ -1702,18 +1717,17 @@ fun NowPlayingBottomSheet(
                             modifier =
                                 Modifier
                                     .align(Alignment.CenterVertically)
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .size(60.dp),
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .size(48.dp),
                         )
                         Spacer(modifier = Modifier.width(20.dp))
                         Column(verticalArrangement = Arrangement.Center) {
                             Text(
                                 text = uiState.songUIState.title,
                                 style = typo().labelMedium,
-                                // typo() bakes a colour into the style, computed from the app's own
-                                // scheme — on this always-dark sheet that reads as washed out next
-                                // to the ActionButton rows below, which take their colour from here.
-                                color = rememberSurfaceDarkColors().content,
+                                fontWeight = FontWeight.Bold,
+                                // Earix menu: always white title on the cosmic backdrop.
+                                color = Color.White,
                                 maxLines = 1,
                                 modifier =
                                     Modifier
@@ -1727,7 +1741,7 @@ fun NowPlayingBottomSheet(
                                         .toListName()
                                         .connectArtists(),
                                 style = typo().bodyMedium,
-                                color = rememberSurfaceDarkColors().subtitle,
+                                color = Color(0xFFB0A5C0),
                                 maxLines = 1,
                                 modifier =
                                     Modifier
@@ -1741,6 +1755,7 @@ fun NowPlayingBottomSheet(
                     HorizontalDivider(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
                         thickness = 1.dp,
+                        color = Color(0x26A855F7),
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Crossfade(targetState = onDelete != null) {
@@ -1814,12 +1829,6 @@ fun NowPlayingBottomSheet(
                         viewModel.onUIEvent(NowPlayingBottomSheetUIEvent.PlayNext)
                     }
                     ActionButton(
-                        icon = SimpIcons.QueueMusic,
-                        text = Res.string.add_to_queue,
-                    ) {
-                        viewModel.onUIEvent(NowPlayingBottomSheetUIEvent.AddToQueue)
-                    }
-                    ActionButton(
                         icon = SimpIcons.PeopleAlt,
                         text = Res.string.artists,
                     ) {
@@ -1852,18 +1861,6 @@ fun NowPlayingBottomSheet(
                             onNavigateToOtherScreen()
                             navController.navigate(AlbumDestination(browseId = id))
                         }
-                    }
-                    ActionButton(
-                        icon = SimpIcons.Sensors,
-                        text = Res.string.start_radio,
-                    ) {
-                        viewModel.onUIEvent(
-                            NowPlayingBottomSheetUIEvent.StartRadio(
-                                videoId = uiState.songUIState.videoId,
-                                name = "\"${uiState.songUIState.title}\" ${runBlocking { getString(Res.string.radio) }}",
-                            ),
-                        )
-                        hideModalBottomSheet()
                     }
                     Crossfade(targetState = changeMainLyricsProviderEnable) {
                         if (it) {
@@ -1931,6 +1928,7 @@ fun NowPlayingBottomSheet(
                         viewModel.onUIEvent(NowPlayingBottomSheetUIEvent.Share)
                     }
                     EndOfModalBottomSheet()
+                    }
                 }
             }
         }
@@ -1949,13 +1947,24 @@ fun ActionButton(
 ) {
     val c = rememberSurfaceDarkColors()
     val resolvedIconColor = if (iconColor == Color.Unspecified) c.content else iconColor
+    // Earix: purple wash while pressed (replaces the default ripple).
+    val rowInteractionSource = remember { MutableInteractionSource() }
+    val rowPressed by rowInteractionSource.collectIsPressedAsState()
     Box(
         modifier =
             Modifier
                 .fillMaxWidth()
                 .wrapContentHeight(Alignment.CenterVertically)
+                .background(if (rowPressed) Color(0xFFA855F7).copy(alpha = 0.18f) else Color.Transparent)
                 .then(
-                    if (enable) Modifier.clickable { onClick.invoke() } else Modifier.greyScale(),
+                    if (enable) {
+                        Modifier.clickable(
+                            indication = null,
+                            interactionSource = rowInteractionSource,
+                        ) { onClick.invoke() }
+                    } else {
+                        Modifier.greyScale()
+                    },
                 ),
     ) {
         Row(
@@ -1996,11 +2005,17 @@ fun CheckBoxActionButton(
     onChangeListener: (checked: Boolean) -> Unit,
 ) {
     var stateChecked by remember { mutableStateOf(defaultChecked) }
+    val likeInteractionSource = remember { MutableInteractionSource() }
+    val likePressed by likeInteractionSource.collectIsPressedAsState()
     Box(
         modifier =
             Modifier
                 .wrapContentSize(align = Alignment.Center)
-                .clickable {
+                .background(if (likePressed) Color(0xFFA855F7).copy(alpha = 0.18f) else Color.Transparent)
+                .clickable(
+                    indication = null,
+                    interactionSource = likeInteractionSource,
+                ) {
                     stateChecked = !stateChecked
                     onChangeListener(stateChecked)
                 },

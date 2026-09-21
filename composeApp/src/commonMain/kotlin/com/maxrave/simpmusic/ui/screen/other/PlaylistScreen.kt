@@ -6,7 +6,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.MarqueeAnimationMode
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
@@ -20,7 +19,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.exclude
 import androidx.compose.foundation.layout.fillMaxSize
@@ -60,18 +58,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -82,9 +79,7 @@ import coil3.compose.LocalPlatformContext
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import coil3.toBitmap
 import com.kyant.backdrop.highlight.Highlight
-import com.kmpalette.rememberPaletteState
 import com.maxrave.simpmusic.ui.component.DownloadingIndicator
 import com.maxrave.domain.data.entities.DownloadState
 import com.maxrave.domain.data.model.browse.album.Track
@@ -95,12 +90,9 @@ import com.maxrave.simpmusic.ui.component.SearchBarEnter
 import com.maxrave.simpmusic.ui.component.rememberHolderPainter
 import com.maxrave.simpmusic.expect.ui.layerBackdrop
 import com.maxrave.simpmusic.expect.ui.rememberBackdrop
-import com.maxrave.simpmusic.expect.ui.toImageBitmap
 import com.maxrave.simpmusic.extension.artworkScrimBrush
-import com.maxrave.simpmusic.extension.getColorFromPalette
 import com.maxrave.simpmusic.extension.getScreenSizeInfo
 import com.maxrave.simpmusic.extension.getStringBlocking
-import com.maxrave.simpmusic.extension.toImmersiveBackground
 import com.maxrave.simpmusic.ui.component.AddToPlaylistModalBottomSheet
 import com.maxrave.simpmusic.ui.component.CenterLoadingBox
 import com.maxrave.simpmusic.ui.component.DescriptionView
@@ -126,7 +118,6 @@ import com.maxrave.simpmusic.ui.icon.Search
 import com.maxrave.simpmusic.ui.icon.Shuffle
 import com.maxrave.simpmusic.ui.icon.SimpIcons
 import com.maxrave.simpmusic.ui.navigation.destination.list.ArtistDestination
-import com.maxrave.simpmusic.ui.theme.LocalIsDarkTheme
 import com.maxrave.simpmusic.ui.theme.seed
 import com.maxrave.simpmusic.ui.theme.typo
 import com.maxrave.simpmusic.viewModel.ListState
@@ -140,11 +131,8 @@ import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
-import dev.chrisbanes.haze.materials.HazeMaterials
 import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import org.jetbrains.compose.resources.painterResource
@@ -181,7 +169,6 @@ fun PlaylistScreen(
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val continuation by viewModel.continuation.collectAsStateWithLifecycle()
-    val listColors by viewModel.listColors.collectAsStateWithLifecycle()
     val downloadState by viewModel.downloadState.collectAsStateWithLifecycle()
     val liked by viewModel.liked.collectAsStateWithLifecycle()
     val tracks by viewModel.tracks.collectAsStateWithLifecycle()
@@ -303,48 +290,17 @@ fun PlaylistScreen(
     LaunchedEffect(key1 = firstItemVisible) {
         shouldHideTopBar = !firstItemVisible
     }
-    val paletteState = rememberPaletteState()
     val hazeState =
         rememberHazeState(
             blurEnabled = true,
         )
-    var bitmap by remember {
-        mutableStateOf<ImageBitmap?>(null)
-    }
-    // Track which thumbnail URL we've already extracted a palette from.
-    // Prevents palette flash when LazyColumn recycles the header item on scroll —
-    // AsyncImage re-mount fires onSuccess again, but we skip the regenerate.
-    var paletteGeneratedFor by remember {
-        mutableStateOf<String?>(null)
-    }
-    val currentThumbnail = (uiState as? PlaylistUIState.Success)?.data?.thumbnail
-
-    LaunchedEffect(bitmap) {
-        val bm = bitmap
-        if (bm != null && currentThumbnail != null && paletteGeneratedFor != currentThumbnail) {
-            paletteState.generate(bm)
-            paletteGeneratedFor = currentThumbnail
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        snapshotFlow { paletteState.palette }
-            .distinctUntilChanged()
-            .collectLatest {
-                viewModel.setBrush(listOf(it.getColorFromPalette(), Color.Black))
-            }
-    }
 
     // Apple Music-inspired immersive treatment. Which header is used depends on the window's
     // aspect ratio alone, not on the platform: a portrait window (a phone held upright, or a
     // narrow desktop window) gets the edge-to-edge artwork header, a landscape one gets the
-    // side-by-side header. Everything else on the page — the palette background, the row
-    // dividers, the blurred top bar — is shared by both.
+    // side-by-side header. The page background is the global cosmic theme.
     val screenInfo = getScreenSizeInfo()
     val isPortrait = screenInfo.wDP < screenInfo.hDP
-    val dominantColor = listColors.firstOrNull() ?: Color.Black
-    // Apple Music-style page background from the artwork's dominant tone (see UIExt.toImmersiveBackground).
-    val mutedPaletteBg = paletteState.palette.toImmersiveBackground()
 
     // Loading dialog
     val showLoadingDialog by viewModel.showLoadingDialog.collectAsStateWithLifecycle()
@@ -372,7 +328,7 @@ fun PlaylistScreen(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .background(mutedPaletteBg)
+                            .background(Color.Transparent)
                             .hazeSource(hazeState),
                     state = lazyState,
                 ) {
@@ -421,9 +377,6 @@ fun PlaylistScreen(
                                                         error = rememberHolderPainter(),
                                                         contentDescription = null,
                                                         contentScale = ContentScale.Crop,
-                                                        onSuccess = {
-                                                            bitmap = it.result.image.toImageBitmap()
-                                                        },
                                                         modifier = Modifier.fillMaxSize(),
                                                     )
                                                     // Scrim spans 70% of the artwork (not a fixed 200dp): the
@@ -436,7 +389,7 @@ fun PlaylistScreen(
                                                                 .fillMaxWidth()
                                                                 .height((screenInfo.hDP * 0.35f).dp)
                                                                 .align(Alignment.BottomCenter)
-                                                                .background(artworkScrimBrush(mutedPaletteBg)),
+                                                                .background(artworkScrimBrush(Color(0xFF0D0618))),
                                                     )
                                                     Column(
                                                         modifier =
@@ -450,6 +403,7 @@ fun PlaylistScreen(
                                                         Text(
                                                             text = data.title,
                                                             style = typo().titleLarge,
+                                                            fontWeight = FontWeight.Bold,
                                                             color = Color.White,
                                                             maxLines = 2,
                                                             textAlign = TextAlign.Center,
@@ -492,7 +446,7 @@ fun PlaylistScreen(
                                                                 }
                                                             } • ${data.year}",
                                                             style = typo().bodyMedium,
-                                                            color = Color(0xC4FFFFFF),
+                                                            color = Color(0xFFB0A5C0),
                                                             textAlign = TextAlign.Center,
                                                         )
                                                     }
@@ -566,7 +520,7 @@ fun PlaylistScreen(
                                             // so the recorded layer holds something to refract — and the glass buttons
                                             // are SIBLINGS placed with align(), never children of the source (that
                                             // nesting is the render-feedback loop that kills the RuntimeShader).
-                                            val headerBackdrop = rememberBackdrop(mutedPaletteBg)
+                                            val headerBackdrop = rememberBackdrop(Color(0xFF0D0618))
                                             Box(modifier = Modifier.fillMaxWidth()) {
                                                 Column(
                                                     modifier =
@@ -599,9 +553,6 @@ fun PlaylistScreen(
                                                             error = rememberHolderPainter(),
                                                             contentDescription = null,
                                                             contentScale = ContentScale.Crop,
-                                                            onSuccess = {
-                                                                bitmap = it.result.image.toImageBitmap()
-                                                            },
                                                             modifier =
                                                                 Modifier
                                                                     .size(280.dp)
@@ -644,7 +595,7 @@ fun PlaylistScreen(
                                                                     }
                                                                 } • ${data.year}",
                                                                 style = typo().labelMedium,
-                                                                color = Color(0xC4FFFFFF),
+                                                                color = Color(0xFFB0A5C0),
                                                             )
                                                             Spacer(modifier = Modifier.height(20.dp))
                                                             // Apple Music-style action row:
@@ -664,7 +615,7 @@ fun PlaylistScreen(
                                                                             Modifier
                                                                                 .size(48.dp)
                                                                                 .clip(CircleShape)
-                                                                                .background(Color.White.copy(alpha = 0.12f))
+                                                                                .background(Color.White)
                                                                                 .clickable {
                                                                                     viewModel.onUIEvent(PlaylistUIEvent.Shuffle)
                                                                                 },
@@ -673,7 +624,7 @@ fun PlaylistScreen(
                                                                         Icon(
                                                                             imageVector = SimpIcons.Shuffle,
                                                                             contentDescription = "Shuffle",
-                                                                            tint = Color.White,
+                                                                            tint = Color(0xFFA855F7),
                                                                             modifier = Modifier.size(22.dp),
                                                                         )
                                                                     }
@@ -683,9 +634,17 @@ fun PlaylistScreen(
                                                                         Modifier
                                                                             .height(48.dp)
                                                                             .widthIn(min = 110.dp)
-                                                                            .clip(CircleShape)
-                                                                            .background(Color.White)
-                                                                            .clickable {
+                                                                            .shadow(
+                                                                                elevation = 8.dp,
+                                                                                shape = CircleShape,
+                                                                                spotColor = Color(0xFFA855F7).copy(alpha = 0.45f),
+                                                                                ambientColor = Color.Transparent,
+                                                                            ).background(
+                                                                                brush = Brush.horizontalGradient(
+                                                                                    listOf(Color(0xFFA855F7), Color(0xFF7C3AED)),
+                                                                                ),
+                                                                                shape = CircleShape,
+                                                                            ).clickable {
                                                                                 if (isThisPlaying) {
                                                                                     sharedViewModel.onUIEvent(UIEvent.PlayPause)
                                                                                 } else {
@@ -699,13 +658,13 @@ fun PlaylistScreen(
                                                                             imageVector =
                                                                                 if (isThisPlaying) SimpIcons.Pause else SimpIcons.PlayArrow,
                                                                             contentDescription = null,
-                                                                            tint = Color.Black,
+                                                                            tint = Color.White,
                                                                             modifier = Modifier.size(22.dp),
                                                                         )
                                                                         Spacer(modifier = Modifier.width(4.dp))
                                                                         Text(
                                                                             text = if (isThisPlaying) "Pause" else "Play",
-                                                                            color = Color.Black,
+                                                                            color = Color.White,
                                                                             style = typo().labelLarge,
                                                                         )
                                                                     }
@@ -716,7 +675,7 @@ fun PlaylistScreen(
                                                                             Modifier
                                                                                 .size(48.dp)
                                                                                 .clip(CircleShape)
-                                                                                .background(Color.White.copy(alpha = 0.12f)),
+                                                                                .background(Color.White),
                                                                         contentAlignment = Alignment.Center,
                                                                     ) {
                                                                         Crossfade(targetState = downloadState) { state ->
@@ -776,7 +735,7 @@ fun PlaylistScreen(
                                                                                     ) {
                                                                                         Icon(
                                                                                             imageVector = SimpIcons.DownloadForOffline,
-                                                                                            tint = Color.White,
+                                                                                            tint = Color(0xFFA855F7),
                                                                                             contentDescription = "Download",
                                                                                             modifier = Modifier.size(22.dp),
                                                                                         )
@@ -879,7 +838,7 @@ fun PlaylistScreen(
                                                                     Modifier
                                                                         .size(48.dp)
                                                                         .clip(CircleShape)
-                                                                        .background(Color.White.copy(alpha = 0.12f))
+                                                                        .background(Color.White)
                                                                         .clickable {
                                                                             viewModel.onUIEvent(PlaylistUIEvent.Shuffle)
                                                                         },
@@ -888,7 +847,7 @@ fun PlaylistScreen(
                                                                 Icon(
                                                                     imageVector = SimpIcons.Shuffle,
                                                                     contentDescription = "Shuffle",
-                                                                    tint = Color.White,
+                                                                    tint = Color(0xFFA855F7),
                                                                     modifier = Modifier.size(22.dp),
                                                                 )
                                                             }
@@ -898,9 +857,17 @@ fun PlaylistScreen(
                                                                 Modifier
                                                                     .height(48.dp)
                                                                     .widthIn(min = 110.dp)
-                                                                    .clip(CircleShape)
-                                                                    .background(Color.White)
-                                                                    .clickable {
+                                                                    .shadow(
+                                                                        elevation = 8.dp,
+                                                                        shape = CircleShape,
+                                                                        spotColor = Color(0xFFA855F7).copy(alpha = 0.45f),
+                                                                        ambientColor = Color.Transparent,
+                                                                    ).background(
+                                                                        brush = Brush.horizontalGradient(
+                                                                            listOf(Color(0xFFA855F7), Color(0xFF7C3AED)),
+                                                                        ),
+                                                                        shape = CircleShape,
+                                                                    ).clickable {
                                                                         if (isThisPlaying) {
                                                                             sharedViewModel.onUIEvent(UIEvent.PlayPause)
                                                                         } else {
@@ -914,13 +881,13 @@ fun PlaylistScreen(
                                                                     imageVector =
                                                                         if (isThisPlaying) SimpIcons.Pause else SimpIcons.PlayArrow,
                                                                     contentDescription = null,
-                                                                    tint = Color.Black,
+                                                                    tint = Color.White,
                                                                     modifier = Modifier.size(22.dp),
                                                                 )
                                                                 Spacer(modifier = Modifier.width(4.dp))
                                                                 Text(
                                                                     text = if (isThisPlaying) "Pause" else "Play",
-                                                                    color = Color.Black,
+                                                                    color = Color.White,
                                                                     style = typo().labelLarge,
                                                                 )
                                                             }
@@ -931,7 +898,7 @@ fun PlaylistScreen(
                                                                     Modifier
                                                                         .size(48.dp)
                                                                         .clip(CircleShape)
-                                                                        .background(Color.White.copy(alpha = 0.12f)),
+                                                                        .background(Color.White),
                                                                 contentAlignment = Alignment.Center,
                                                             ) {
                                                                 Crossfade(targetState = downloadState) { state ->
@@ -991,7 +958,7 @@ fun PlaylistScreen(
                                                                             ) {
                                                                                 Icon(
                                                                                     imageVector = SimpIcons.DownloadForOffline,
-                                                                                    tint = Color.White,
+                                                                                    tint = Color(0xFFA855F7),
                                                                                     contentDescription = "Download",
                                                                                     modifier = Modifier.size(22.dp),
                                                                                 )
@@ -1109,7 +1076,7 @@ fun PlaylistScreen(
                                     HorizontalDivider(
                                         modifier = Modifier.padding(start = 72.dp, end = 16.dp),
                                         thickness = 0.5.dp,
-                                        color = Color.White.copy(alpha = 0.12f),
+                                        color = Color(0x26A855F7),
                                     )
                                 }
                             }
@@ -1181,8 +1148,8 @@ fun PlaylistScreen(
                             .hazeEffect(hazeState) {
                                 blurEnabled = true
                                 blurRadius = 24.dp
-                                backgroundColor = mutedPaletteBg
-                                tints = listOf(HazeTint(mutedPaletteBg.copy(alpha = 0.55f)))
+                                backgroundColor = Color(0xFF0D0618)
+                                tints = listOf(HazeTint(Color(0xFF0D0618).copy(alpha = 0.55f)))
                             },
                     ) {
                         Row(
@@ -1256,8 +1223,8 @@ fun PlaylistScreen(
                             Modifier.hazeEffect(hazeState) {
                                 blurEnabled = true
                                 blurRadius = 24.dp
-                                backgroundColor = mutedPaletteBg
-                                tints = listOf(HazeTint(mutedPaletteBg.copy(alpha = 0.55f)))
+                                backgroundColor = Color(0xFF0D0618)
+                                tints = listOf(HazeTint(Color(0xFF0D0618).copy(alpha = 0.55f)))
                             },
                     )
                 }
@@ -1391,8 +1358,8 @@ fun PlaylistScreen(
                             Modifier.hazeEffect(hazeState) {
                                 blurEnabled = true
                                 blurRadius = 24.dp
-                                backgroundColor = mutedPaletteBg
-                                tints = listOf(HazeTint(mutedPaletteBg.copy(alpha = 0.55f)))
+                                backgroundColor = Color(0xFF0D0618)
+                                tints = listOf(HazeTint(Color(0xFF0D0618).copy(alpha = 0.55f)))
                             },
                     )
                 }

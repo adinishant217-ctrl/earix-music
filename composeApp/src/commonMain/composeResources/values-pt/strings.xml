@@ -120,15 +120,7 @@
     <string name="restore_your_saved_data">Restaurar os dados salvos</string>
     <string name="about_us">Sobre nós</string>
     <string name="version">Versão</string>
-    <string name="github">GitHub</string>
-    <string name="maxrave_dev">maxrave-dev</string>
-    <string name="buy_me_a_coffee">Compre-me um café</string>
-    <string name="developer_blog">Blog do Desenvolvedor</string>
-    <string name="developer_blog_tagline">Leia notas de desenvolvimento, tutoriais &amp; nos bastidores</string>
-    <string name="blog_promo_title">Algo novo do desenvolvimento</string>
-    <string name="blog_promo_message">Acabei de lançar meu blog pessoal no maxrave. ev — compartilhando a história por trás da SimpMusic, mergulhos profundos na música e notas de engenharia. Dê uma lida se você estiver curioso ✨</string>
-    <string name="visit_blog">Visite o Blog</string>
-    <string name="paypal">PayPal</string>
+<string name="paypal">PayPal</string>
     <string name="title">Título</string>
     <string name="custom_order">Manual</string>
     <string name="album">Álbum</string>
@@ -145,7 +137,7 @@
     <string name="albums_inArtist">Álbuns</string>
     <string name="singles_inArtist">Singles</string>
     <string name="fans_might_also_like_inArtist">Os fãs também poderão gostar de…</string>
-    <string name="crash_log">SimpMusic parou de funcionar. Lamentamos por este problema.\nEnviar informações do erro para o desenvolvedor</string>
+    <string name="crash_log">Earix parou de funcionar. Lamentamos por este problema.\nEnviar informações do erro para o desenvolvedor</string>
     <string name="crash">Falha</string>
     <string name="send">Enviar</string>
     <string name="mail_subject">Reportar falha</string>
@@ -180,11 +172,6 @@
     <string name="time_out_check_internet_connection_or_change_piped_instance_in_settings">Tempo esgotado, verifique sua conexão com a internet</string>
     <string name="save_last_played">Salvar Última Reprodução</string>
     <string name="save_last_played_track_and_queue">Salvar a última faixa e fila reproduzidas</string>
-    <string name="update_available">Nova atualização disponível</string>
-    <string name="update_message"></string>
-    <string name="check_for_update">Verificar atualizações</string>
-    <string name="last_checked_at">Última verificação: %1$s</string>
-    <string name="checking">Verificando</string>
     <string name="sponsorblock_skip_segment">SponsorShip: Pular parte %1$s</string>
     <string name="sponsor">Patrocinador</string>
     <string name="self_promotion">Autopromoção</string>
@@ -201,12 +188,12 @@
     <string name="what_segments_will_be_skipped">Quais segmentos serão pulados</string>
     <string name="save">Salvar</string>
     <string name="saved">Salvos</string>
-    <string name="sponsor_block_intro">SponsorBlock é um sistema feito por usuários para pular partes entediantes dos vídeos do YouTube\nPara mais informações: https://sponsor. jay.app/\nNo SimpMusic, o SponsorBlock só está disponível quando o dispositivo estiver online</string>
+    <string name="sponsor_block_intro">SponsorBlock é um sistema feito por usuários para pular partes entediantes dos vídeos do YouTube\nPara mais informações: https://sponsor. jay.app/\nNo Earix, o SponsorBlock só está disponível quando o dispositivo estiver online</string>
     <string name="skip_sponsor_part_of_video">Pular parte do patrocinador do vídeo</string>
     <string name="customactivityoncrash_error_activity_error_occurred_explanation">Um erro inesperado acabou acontecendo. Pedimos desculpas pelo inconveniente.</string>
     <string name="customactivityoncrash_error_activity_restart_app">Reiniciar aplicativo</string>
-    <string name="help_build_lyrics_database">Ajude o SimpMusic Letras a construir o banco de dados de letras</string>
-    <string name="help_build_lyrics_database_description">Envie suas letras salvas para o banco de dados do SimpMusic Letras</string>
+    <string name="help_build_lyrics_database">Ajude o Earix Letras a construir o banco de dados de letras</string>
+    <string name="help_build_lyrics_database_description">Envie suas letras salvas para o banco de dados do Earix Letras</string>
     <string name="customactivityoncrash_error_activity_close_app">Fechar aplicativo</string>
     <string name="customactivityoncrash_error_activity_error_details">Detalhes do erro</string>
     <string name="customactivityoncrash_error_activity_error_details_title">Detalhes do erro</string>
@@ -242,7 +229,7 @@
     <string name="saved_to_local_playlist">Salvo na playlist local</string>
     <string name="if_you_want_to_unsync_this_playlist_please_go_to_local_playlist">se você quiser dessincronizar esta lista de reprodução, vá para a lista de reprodução local</string>
     <string name="log_in_to_get_YouTube_playlist">Faça login para obter a Playlist do YouTube</string>
-    <string name="sync_playlist_warning">O SimpMusic irá criar uma playlist do YouTube automaticamente. Você tem certeza?</string>
+    <string name="sync_playlist_warning">O Earix irá criar uma playlist do YouTube automaticamente. Você tem certeza?</string>
     <string name="syncing">Sincronizando</string>
     <string name="unsync_playlist_warning">"Dessincronizar esta playlist? Ela não será removida do YouTube Music "</string>
     <string name="unsyncing">Dessincronizando</string>
@@ -259,15 +246,12 @@
     <string name="email">Email</string>
     <string name="password">Senha</string>
     <string name="please_enter_your_email_and_password">Por favor entre com seu e-mail e senha</string>
-    <string name="translation_language_message">Type language code (Eg: pt) (2 letters). If you want to set same with SimpMusic's language, please make edit box empty.</string>
+    <string name="translation_language_message">Type language code (Eg: pt) (2 letters). If you want to set same with Earix's language, please make edit box empty.</string>
     <string name="invalid_language_code">Código de idioma inválido</string>
     <string name="lyrics_provider_youtube">Letras fornecidas pelo YouTube</string>
     <string name="lyrics_provider_betterlyrics">Letra fornecida por BetterLyrics</string>
     <string name="limit_player_cache">Limitar cache do jogador</string>
     <string name="unlimited">Ilimitado</string>
-    <string name="third_party_libraries">Bibliotecas de terceiros</string>
-    <string name="description_and_licenses">Descrição e licenças</string>
-    <string name="author">Autor</string>
     <string name="other_app">Outro aplicativo</string>
     <string name="database">Banco de dados de aplicativos</string>
     <string name="free_space">Espaço livre</string>
@@ -278,9 +262,8 @@
     <string name="older_first">Mais Antigas Primeiro</string>
     <string name="newer_first">Mais Recentes Primeiro</string>
     <string name="added_date">Data adicionada</string>
-    <string name="credit_app">A simple music app using YouTube Music for backend \n\nSimpMusic is an open source project to stream music from YouTube and YouTube Music without ads and tracking. SimpMusic provides many features:\n\n - Streaming music \n - Synced lyrics\n - Personalize data\n - etc… \n\nSimpMusic is always free and no ads\n\nBuild with ❤️ from Tuan Minh Nguyen Duc (maxrave-dev)</string>
-    <string name="issue_tracker">Rastreador de problemas</string>
-    <string name="featured_playlists">Listas de reprodução em destaque</string>
+    <string name="credit_app">A simple music app using YouTube Music for backend \n\nEarix is an open source project to stream music from YouTube and YouTube Music without ads and tracking. Earix provides many features:\n\n - Streaming music \n - Synced lyrics\n - Personalize data\n - etc… \n\nEarix is always free and no ads</string>
+<string name="featured_playlists">Listas de reprodução em destaque</string>
     <string name="featured_inArtist">Destacado</string>
     <string name="audio_quality">Qualidade de áudio</string>
     <string name="play_video_for_video_track_instead_of_audio_only">Reproduzir vídeo para faixa de vídeo em vez de apenas áudio</string>
@@ -318,7 +301,7 @@
     <string name="enable_spotify_lyrics">Habilitar letras do Spotify</string>
     <string name="spotify_lyrícs_info">More lyrics without translation</string>
     <string name="enable_canvas">Ativar Canvas</string>
-    <string name="canvas_info">Mostrar Canvas do Spotify no SimpMusic</string>
+    <string name="canvas_info">Mostrar Canvas do Spotify no Earix</string>
     <string name="spotify_lyrics_provider">Letras fornecidas pela Lrclib</string>
     <string name="offline_mode">Modo offline</string>
     <string name="added_to_youtube_liked">Adicionado aos \"Curtidos\" do YouTube</string>
@@ -356,7 +339,6 @@
     <string name="theme_color_wallpaper">Papel de parede</string>
     <string name="translucent_bottom_navigation_bar">Barra de navegação inferior translúcida</string>
     <string name="you_can_see_the_content_below_the_bottom_bar">Você pode ver o conteúdo abaixo da barra inferior</string>
-    <string name="donation">Se curtiu o meu trabalho, me paga um café</string>
     <string name="relax">Relaxante</string>
     <string name="sleep">Suspensão</string>
     <string name="energize">Inspirar</string>
@@ -374,7 +356,7 @@
     <string name="loading">Carregando</string>
     <string name="updating">Atualizando</string>
     <string name="go_to_log_in_page">Ir para a página de acesso</string>
-    <string name="log_in_warning">O YouTube Music agora requer o acesso à conta para fazer a transmissão de músicas, O Piped pode em algum momento não funcionar também. Logue no YouTube para ter uma melhor experiência com a SimpMusic.</string>
+    <string name="log_in_warning">O YouTube Music agora requer o acesso à conta para fazer a transmissão de músicas, O Piped pode em algum momento não funcionar também. Logue no YouTube para ter uma melhor experiência com a Earix.</string>
     <string name="spotify_canvas_cache">Cache de Tela Spotify</string>
     <string name="clear_canvas_cache">Limpar cache da tela</string>
     <string name="proxy">'Proxy'</string>
@@ -397,8 +379,6 @@
     <string name="sync_first">Sincronize esta lista de reprodução com o YouTube Music primeiro</string>
     <string name="endless_queue">Fila infinita</string>
     <string name="do_not_show_again">Não mostrar novamente</string>
-    <string name="auto_check_for_update">Verificar atualizações automaticamente</string>
-    <string name="auto_check_for_update_description">Procurar atualizações quando abre o aplicativo</string>
     <string name="playback_speed_pitch"><![CDATA[Velocidade de reprodução e tom]]></string>
     <string name="playback_speed_pitch_disabled"><![CDATA[Velocidade e tom de reprodução (desativado quando o crossfade está habilitado)]]></string>
     <string name="playback_speed">Velocidade de reprodução</string>
@@ -412,11 +392,7 @@
     <string name="download_speed">Velocidade de download:  %1$s </string>
     <string name="shuffle">Reproduzir aleatoriamente</string>
     <string name="other_version">Outra versão</string>
-    <string name="later">Depois</string>
-    <string name="give_a_star">Dê uma estrela</string>
-    <string name="enjoying_simpmusic">Aproveitando o SimpMusic</string>
-    <string name="if_you_enjoy_using_simpmusic_star_simpmusic_on_github_or_leave_a_review_on">Se gosta de usar o SimpMusic, dê-nos uma estrela no GitHub ou deixe-nos uma avaliação</string>
-    <string name="if_you_love_my_work_consider">"Se aprecia o meu trabalho, considere "</string>
+<string name="if_you_love_my_work_consider">"Se aprecia o meu trabalho, considere "</string>
     <string name="buying_me_a_coffee">compre-me um café.</string>
     <string name="fade_audio_effect">Efeito de Áudio em Fade</string>
     <string name="disabled">Desabilitar</string>
@@ -447,8 +423,7 @@
     <string name="your_discord_token">Seu Discord token</string>
     <string name="can_not_be_empty">Não pode estar vazio</string>
     <string name="processing">Processando</string>
-    <string name="website">Site</string>
-    <string name="download_this_song_video_file_to_your_device">Baixar este arquivo de música/vídeo para seu dispositivo</string>
+<string name="download_this_song_video_file_to_your_device">Baixar este arquivo de música/vídeo para seu dispositivo</string>
     <string name="kill_service_on_exit">Encerrar serviço ao sair</string>
     <string name="kill_service_on_exit_description">Parar reprodutor de música em segundo plano ao sair do app</string>
     <string name="desktop_player">Player para desktop</string>
@@ -468,14 +443,14 @@
     <string name="contributor_name">Nome do colaborador</string>
     <string name="contributor_email">E-mail do colaborador</string>
     <string name="anonymous">Anônimo</string>
-    <string name="simpmusic_lyrics">SimpMusic Letras</string>
-    <string name="lyrics_provider_simpmusic">Lyrics provided by SimpMusic Lyrics</string>
+    <string name="simpmusic_lyrics">Earix Letras</string>
+    <string name="lyrics_provider_simpmusic">Lyrics provided by Earix Lyrics</string>
     <string name="backup_in_progress">Recuperação Em Progresso</string>
     <string name="restore_in_progress">Restauração Em Progresso</string>
     <string name="backup_downloaded">Recuperação dos dados baixados</string>
     <string name="backup_downloaded_description">Faça backup de todos os dados das músicas baixadas</string>
     <string name="auto_backup">Backup automático</string>
-    <string name="auto_backup_description">Backup automático dos seus dados para a pasta Downloads/SimpMusic</string>
+    <string name="auto_backup_description">Backup automático dos seus dados para a pasta Downloads/Earix</string>
     <string name="backup_frequency">Frequência de backup</string>
     <string name="daily">Diariamente</string>
     <string name="weekly">Semanalmente</string>
@@ -489,7 +464,6 @@
     <string name="no_playlist_found">Não foram encontradas listas de reprodução locais, por favor crie uma primeiro</string>
     <string name="list_all_cookies_of_this_page">Listar todos os cookies desta página</string>
     <string name="copied_to_clipboard">Copiado para a área de transferência</string>
-    <string name="update_channel">Canal De Atualizações</string>
     <string name="enable_liquid_glass_effect">Enable liquid glass (BETA)</string>
     <string name="enable_liquid_glass_effect_description">Ativar o efeito de vidro líquido do iOS em alguma posição (Android 13+)</string>
     <string name="your_library">Your library</string>
@@ -535,13 +509,13 @@
     <string name="downvote">Desaprovar</string>
     <string name="vote_submitted">Obrigado por votar nessa letra!</string>
     <string name="vote_error">Falha ao enviar</string>
-    <string name="open_app">Abrir SimpMusic</string>
+    <string name="open_app">Abrir Earix</string>
     <string name="close_miniplayer">Fechar Mini-player</string>
     <string name="open_miniplayer">Abrir Mini-player</string>
     <string name="quit_app">Sair do app</string>
     <string name="local_tracking_title">Histórico de reprodução local</string>
     <string name="local_tracking_description">Registrar seu histórico de reprodução no banco de dados local</string>
-    <string name="simpmusic_charts">Paradas SimpMusic</string>
+    <string name="simpmusic_charts">Paradas Earix</string>
     <string name="crossfading">Crossfading</string>
     <string name="your_320kbps_url">Sua URL de 320kbps</string>
     <string name="your_320kbps_url_description">Deixe vazio para escolher automaticamente uma URL de trabalho do verificador.</string>
@@ -554,5 +528,4 @@
     <string name="home_offline_subtitle">Verifique sua conexão com a internet e tente novamente mais tarde ou ouça suas músicas baixadas.</string>
     <string name="listen_to_downloaded">Ouvir músicas baixadas</string>
     <string name="max_selection_reached">Você pode selecionar até %1$d músicas de cada vez</string>
-    <!-- Listen Together -->
 </resources>

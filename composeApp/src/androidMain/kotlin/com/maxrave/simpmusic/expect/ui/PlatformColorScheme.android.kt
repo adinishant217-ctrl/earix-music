@@ -17,10 +17,10 @@ actual fun platformDynamicColorScheme(isDark: Boolean): ColorScheme? {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return null
     val context = LocalContext.current
     return if (isDark) {
-        // Keep the OLED look: pin background/surface to pure black like the seed scheme.
+        // Keep the cosmic look: pin background/surface to deep purple-black like the brand scheme.
         dynamicDarkColorScheme(context).copy(
-            background = Color.Black,
-            surface = Color.Black,
+            background = Color(0xFF0D0618),
+            surface = Color(0xFF1A0B2E),
         )
     } else {
         dynamicLightColorScheme(context)

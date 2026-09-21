@@ -880,13 +880,14 @@ fun LyricsLineItem(
     // only touches opacity.
     Crossfade(targetState = isBold) { bold ->
         Column(
-            modifier = modifier,
+            modifier = modifier.fillMaxWidth(),
         ) {
             Spacer(modifier = Modifier.height(12.dp))
             Text(
                 text = originalWords,
                 style = if (bold) typo().headlineLarge else typo().headlineMedium,
                 color = if (bold && isCurrent) Color.White else DimOriginalColor,
+                modifier = Modifier.fillMaxWidth(),
             )
             if (romanizedWords != null) {
                 Text(
@@ -896,6 +897,7 @@ fun LyricsLineItem(
                     // third KIND of thing, and giving it the translation's colour would read as
                     // two translations stacked.
                     color = if (bold && isCurrent) DimRomanizedCurrentColor else DimRomanizedColor,
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
             if (translatedWords != null) {
@@ -903,6 +905,7 @@ fun LyricsLineItem(
                     text = translatedWords,
                     style = typo().bodyMedium,
                     color = if (bold && isCurrent) Color.Yellow else DimTranslatedColor,
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
             Spacer(modifier = Modifier.height(12.dp))
@@ -998,7 +1001,7 @@ fun RichSyncLyricsLineItem(
     }
 
     Column(
-        modifier = modifier,
+        modifier = modifier.fillMaxWidth(),
     ) {
         Spacer(modifier = Modifier.height(customPadding))
 
@@ -1048,6 +1051,7 @@ fun RichSyncLyricsLineItem(
                 text = romanizedWords,
                 style = translatedStyleOverride ?: typo().bodyMedium,
                 color = if (isCurrent) DimRomanizedCurrentColor else DimRomanizedColor,
+                modifier = Modifier.fillMaxWidth(),
             )
         }
 
@@ -1057,6 +1061,7 @@ fun RichSyncLyricsLineItem(
                 text = translatedWords,
                 style = translatedStyleOverride ?: typo().bodyMedium,
                 color = translatedColorOverride ?: if (isCurrent) Color.Yellow else DimTranslatedColor,
+                modifier = Modifier.fillMaxWidth(),
             )
         }
 

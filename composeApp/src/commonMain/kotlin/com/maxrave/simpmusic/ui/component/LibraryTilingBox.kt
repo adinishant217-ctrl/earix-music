@@ -1,5 +1,6 @@
 package com.maxrave.simpmusic.ui.component
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -103,16 +104,23 @@ fun LibraryTilingItem(
     onClick: () -> Unit = {},
 ) {
     val title = stringResource(state.title)
+    // Earix: dark purple glass instead of the old per-tile colors.
     ElevatedCard(
         modifier =
-            Modifier.fillMaxWidth().clickable {
-                onClick.invoke()
-            },
-        shape = RoundedCornerShape(8.dp),
+            Modifier
+                .fillMaxWidth()
+                .border(
+                    width = 1.dp,
+                    color = Color(0x4DA855F7),
+                    shape = RoundedCornerShape(16.dp),
+                ).clickable {
+                    onClick.invoke()
+                },
+        shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.elevatedCardElevation(),
         colors =
             CardDefaults.elevatedCardColors().copy(
-                containerColor = state.containerColor,
+                containerColor = Color(0x1FA855F7),
             ),
     ) {
         Row(
@@ -126,12 +134,12 @@ fun LibraryTilingItem(
                     Modifier
                         .size(50.dp)
                         .padding(10.dp),
-                tint = state.iconColor,
+                tint = Color(0xFFA855F7),
             )
             Text(
                 title,
                 style = typo().titleSmall,
-                color = Color.Black,
+                color = Color.White,
             )
         }
     }

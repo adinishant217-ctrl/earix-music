@@ -46,7 +46,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
@@ -63,12 +62,10 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.maxrave.domain.data.entities.NotificationEntity
 import com.maxrave.simpmusic.extension.formatTimeAgo
-import com.maxrave.simpmusic.ui.component.AmbientThemeGlow
 import com.maxrave.simpmusic.ui.component.CenterLoadingBox
 import com.maxrave.simpmusic.ui.component.EndOfPage
 import com.maxrave.simpmusic.ui.component.RippleIconButton
 import com.maxrave.simpmusic.ui.component.rememberHolderPainter
-import com.maxrave.simpmusic.ui.component.rememberNowPlayingGlowTint
 import com.maxrave.simpmusic.ui.icon.ArrowBackIosNew
 import com.maxrave.simpmusic.ui.icon.RssFeed
 import com.maxrave.simpmusic.ui.icon.SimpIcons
@@ -76,13 +73,11 @@ import com.maxrave.simpmusic.ui.navigation.destination.list.AlbumDestination
 import com.maxrave.simpmusic.ui.navigation.destination.list.ArtistDestination
 import com.maxrave.simpmusic.ui.theme.typo
 import com.maxrave.simpmusic.viewModel.NotificationViewModel
-import com.maxrave.simpmusic.viewModel.SharedViewModel
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import org.jetbrains.compose.resources.stringResource
-import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import simpmusic.composeapp.generated.resources.Res
 import simpmusic.composeapp.generated.resources.album
@@ -96,10 +91,8 @@ import simpmusic.composeapp.generated.resources.singles
 fun NotificationScreen(
     navController: NavController,
     viewModel: NotificationViewModel = koinViewModel(),
-    sharedViewModel: SharedViewModel = koinInject(),
 ) {
     val listNotification by viewModel.listNotification.collectAsStateWithLifecycle()
-    val glowNowPlaying by sharedViewModel.nowPlayingState.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     val density = LocalDensity.current
     val hazeState = rememberHazeState(blurEnabled = true)
@@ -109,20 +102,9 @@ fun NotificationScreen(
         derivedStateOf { listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0 }
     }
 
-    // Home-family ambient ground — scrolls away with the list (see SettingScreen's note on the
-    // draw-phase translation).
-    AmbientThemeGlow(
-        tint = rememberNowPlayingGlowTint(glowNowPlaying?.songEntity?.thumbnails),
-        modifier =
-            Modifier.graphicsLayer {
-                translationY =
-                    if (listState.firstVisibleItemIndex == 0) {
-                        -listState.firstVisibleItemScrollOffset.toFloat()
-                    } else {
-                        -size.height
-                    }
-            },
-    )
+    // Fully transparent: the global Earix nebula background from App.kt shows through
+    // top to bottom. (The AmbientThemeGlow layer used here painted an opaque 360dp
+    // gradient ending in the solid theme background, hiding the nebula at the top.)
     Box(Modifier.fillMaxSize().hazeSource(hazeState)) {
         Crossfade(targetState = listNotification) {
             if (it == null) {
@@ -145,7 +127,7 @@ fun NotificationScreen(
                         ),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    items(it) { notification ->
+                    items(it, key = { it.id }) { notification ->
                         NotificationItem(
                             notification = notification,
                             navController,
@@ -162,6 +144,7 @@ fun NotificationScreen(
                     Text(
                         text = stringResource(Res.string.no_notification),
                         style = typo().titleMedium,
+                        color = Color(0xFFB0A5C0),
                         textAlign = TextAlign.Center,
                         modifier = Modifier.align(Alignment.Center),
                     )
@@ -213,8 +196,8 @@ fun NotificationScreen(
                         navController.navigateUp()
                     }
                 },
-                // Transparent, or the default surface container paints an opaque strip over the
-                // very top of AmbientThemeGlow — the one part of it that actually carries colour.
+                // Transparent, or the default surface container paints an opaque strip over
+                // the nebula background at the very top of the screen.
                 colors =
                     TopAppBarDefaults.topAppBarColors(
                         containerColor = Color.Transparent,
@@ -250,15 +233,19 @@ fun NotificationItem(
                 },
             ) {
                 val thumb = notification.thumbnail
-                AsyncImage(
-                    model =
+                val platformContext = LocalPlatformContext.current
+                val thumbModel =
+                    remember(thumb) {
                         ImageRequest
-                            .Builder(LocalPlatformContext.current)
+                            .Builder(platformContext)
                             .data(thumb)
                             .diskCachePolicy(CachePolicy.ENABLED)
                             .diskCacheKey(thumb)
                             .crossfade(true)
-                            .build(),
+                            .build()
+                    }
+                AsyncImage(
+                    model = thumbModel,
                     placeholder = rememberHolderPainter(),
                     error = rememberHolderPainter(),
                     contentDescription = null,
@@ -281,7 +268,7 @@ fun NotificationItem(
             LazyRow(
                 Modifier.padding(top = 15.dp),
             ) {
-                items(notification.single) { single ->
+                items(notification.single, key = { it["browseId"] ?: it["title"].orEmpty() }) { single ->
                     ItemAlbumNotification(
                         isAlbum = false,
                         browseId = single["browseId"] ?: "",
@@ -290,7 +277,7 @@ fun NotificationItem(
                         navController,
                     )
                 }
-                items(notification.album) { album ->
+                items(notification.album, key = { it["browseId"] ?: it["title"].orEmpty() }) { album ->
                     ItemAlbumNotification(
                         isAlbum = true,
                         browseId = album["browseId"] ?: "",
@@ -305,6 +292,7 @@ fun NotificationItem(
         Text(
             text = notification.time.formatTimeAgo(),
             style = typo().titleSmall,
+            color = Color(0xFFB0A5C0),
             modifier =
                 Modifier
                     .align(Alignment.TopEnd)
@@ -342,20 +330,21 @@ fun BlogNotificationItem(notification: NotificationEntity) {
                 Icon(
                     imageVector = SimpIcons.RssFeed,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurface,
+                    tint = Color(0xFFA855F7),
                     modifier = Modifier.size(26.dp),
                 )
             }
             Spacer(modifier = Modifier.width(12.dp))
             Column(Modifier.padding(end = 56.dp)) {
-                Text(text = "New blog post", style = typo().titleSmall)
+                Text(text = "New blog post", style = typo().titleSmall, color = Color.White)
                 Spacer(modifier = Modifier.height(3.dp))
-                Text(text = notification.name, style = typo().titleMedium)
+                Text(text = notification.name, style = typo().titleMedium, color = Color.White)
                 notification.description?.takeIf { it.isNotBlank() }?.let { desc ->
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = desc,
                         style = typo().bodySmall,
+                        color = Color(0xFFB0A5C0),
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -365,6 +354,7 @@ fun BlogNotificationItem(notification: NotificationEntity) {
         Text(
             text = notification.time.formatTimeAgo(),
             style = typo().titleSmall,
+            color = Color(0xFFB0A5C0),
             modifier =
                 Modifier
                     .align(Alignment.TopEnd)
@@ -395,15 +385,19 @@ fun ItemAlbumNotification(
         Column(
             Modifier.padding(5.dp),
         ) {
-            AsyncImage(
-                model =
+            val platformContext = LocalPlatformContext.current
+            val itemModel =
+                remember(thumbnail) {
                     ImageRequest
-                        .Builder(LocalPlatformContext.current)
+                        .Builder(platformContext)
                         .data(thumbnail)
                         .diskCachePolicy(CachePolicy.ENABLED)
                         .diskCacheKey(thumbnail)
                         .crossfade(true)
-                        .build(),
+                        .build()
+                }
+            AsyncImage(
+                model = itemModel,
                 placeholder = rememberHolderPainter(),
                 error = rememberHolderPainter(),
                 contentDescription = null,

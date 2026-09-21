@@ -9,7 +9,6 @@ import com.maxrave.domain.data.model.home.HomeItem
 import com.maxrave.domain.data.model.home.chart.Chart
 import com.maxrave.domain.data.model.mood.Mood
 import com.maxrave.domain.manager.DataStoreManager
-import com.maxrave.domain.manager.DataStoreManager.Values.TRUE
 import com.maxrave.domain.repository.HomeRepository
 import com.maxrave.domain.utils.Resource
 import com.maxrave.logger.Logger
@@ -74,10 +73,6 @@ class HomeViewModel(
     private var _params: MutableStateFlow<String?> = MutableStateFlow(null)
     val params: StateFlow<String?> = _params
 
-    // For showing alert that should log in to YouTube
-    private val _showLogInAlert: MutableStateFlow<Boolean> = MutableStateFlow(false)
-    val showLogInAlert: StateFlow<Boolean> = _showLogInAlert
-
     val dataSyncId =
         dataStoreManager
             .dataSyncId
@@ -87,13 +82,6 @@ class HomeViewModel(
     val mainHomeThumbnail: StateFlow<String?> = _mainHomeThumbnail
 
     init {
-        if (runBlocking { dataStoreManager.cookie.first() }.isEmpty() &&
-            runBlocking {
-                dataStoreManager.shouldShowLogInRequiredAlert.first() == TRUE
-            }
-        ) {
-            _showLogInAlert.update { true }
-        }
         homeJob = Job()
         viewModelScope.launch {
             regionCodeChart.value = dataStoreManager.chartKey.first()
@@ -167,15 +155,6 @@ class HomeViewModel(
             job4.join()
             job5.join()
             job6.join()
-        }
-    }
-
-    fun doneShowLogInAlert(neverShowAgain: Boolean = false) {
-        viewModelScope.launch {
-            _showLogInAlert.update { false }
-            if (neverShowAgain) {
-                dataStoreManager.setShouldShowLogInRequiredAlert(false)
-            }
         }
     }
 

@@ -85,6 +85,34 @@ fun parseThemeColorHex(hex: String): Color? {
 }
 
 /**
+ * Earix brand palette, applied on top of the seed-generated dark scheme when the
+ * theme color source is Default. Neutrals become cosmic purple-black; primary and
+ * secondary are pinned to the exact brand values. Wallpaper/Custom sources keep
+ * their seed-derived accents and only get the dark neutrals via the AMOLED base.
+ */
+private fun ColorScheme.withEarixDarkScheme(): ColorScheme =
+    copy(
+        primary = Color(0xFFA855F7),
+        onPrimary = Color(0xFFFFFFFF),
+        primaryContainer = Color(0xFF7C3AED),
+        onPrimaryContainer = Color(0xFFFFFFFF),
+        secondary = Color(0xFFC084FC),
+        onSecondary = Color(0xFFFFFFFF),
+        secondaryContainer = Color(0x337C3AED),
+        onSecondaryContainer = Color(0xFFFFFFFF),
+        background = Color(0xFF0D0618),
+        onBackground = Color(0xFFFFFFFF),
+        surface = Color(0xFF1A0B2E),
+        onSurface = Color(0xFFFFFFFF),
+        surfaceVariant = Color(0xFF241540),
+        onSurfaceVariant = Color(0xFFB0A5C0),
+        outline = Color(0x33A855F7),
+        outlineVariant = Color(0x33A855F7),
+        error = Color(0xFFF87171),
+        onError = Color(0xFFFFFFFF),
+    )
+
+/**
  * Neutral surfaces for the light theme, on a pure neutral-grey ramp (R=G=B, no seed tint);
  * primary/secondary/tertiary stay seed-derived. The page background is #FAFAFA (neutral tone 98,
  * the Material 3 stance) rather than pure white: a full-bleed #FFFFFF expanse glares on a large
@@ -141,6 +169,9 @@ fun AppTheme(
         }
     // Symmetric base: dark pins background/surface to pure black via isAmoled; light pins them to
     // pure white with a neutral-grey ramp (the seed otherwise tints the light neutrals warm/cream).
+    // With the Default color source the dark scheme is additionally pinned to the exact Earix
+    // palette; Wallpaper/Custom keep seed-derived accents.
+    val pinEarixScheme = themeColorSource == DataStoreManager.THEME_COLOR_DEFAULT
     val colorScheme =
         wallpaperScheme
             ?: rememberDynamicColorScheme(
@@ -148,7 +179,13 @@ fun AppTheme(
                 isDark = isDark,
                 isAmoled = isDark,
                 style = PaletteStyle.TonalSpot,
-                modifyColorScheme = { cs -> if (isDark) cs else cs.withNeutralLightSurfaces() },
+                modifyColorScheme = { cs ->
+                    if (isDark) {
+                        if (pinEarixScheme) cs.withEarixDarkScheme() else cs
+                    } else {
+                        cs.withNeutralLightSurfaces()
+                    }
+                },
             )
     // Immersive screens stay dark even at light theme (see [ForceDarkContent]). Resolve their scheme
     // once here instead of letting every such subtree build a palette of its own.
@@ -161,6 +198,7 @@ fun AppTheme(
                 isDark = true,
                 isAmoled = true,
                 style = PaletteStyle.TonalSpot,
+                modifyColorScheme = { cs -> if (pinEarixScheme) cs.withEarixDarkScheme() else cs },
             )
         }
     SystemBarAppearanceEffect(isDark)

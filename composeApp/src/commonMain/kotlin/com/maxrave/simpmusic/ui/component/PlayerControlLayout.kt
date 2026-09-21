@@ -17,6 +17,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -45,11 +47,14 @@ fun PlayerControlLayout(
     // The capsule already pads its own edges; stacking this 20dp on top of that
     // read as a hole at both ends of the transport cluster.
     horizontalPadding: Dp = 20.dp,
-    // Tint for the ACTIVE shuffle/repeat state. The default keeps the raw seed (#8ECAE6) every
-    // existing call site had; the capsule passes a theme-aware colour because pastel seed on a
+    // Tint for the ACTIVE shuffle/repeat state. Defaults to the brand seed (Earix purple);
+    // the capsule passes a theme-aware colour because pastel seed on a
     // light glass surface is nearly invisible.
     activeColor: Color = seed,
     contentColor: Color = Color.White,
+    // Earix Now Playing style: purple gradient disc with glow instead of the outline disc icons.
+    // Gated so the desktop capsule (plainPlayPause) and other compact users keep their look.
+    useGradientPlayButton: Boolean = false,
     onUIEvent: (UIEvent) -> Unit,
 ) {
     val height = if (isSmallSize) 48.dp else 96.dp
@@ -128,11 +133,29 @@ fun PlayerControlLayout(
             Box(
                 modifier =
                     Modifier
-                        .background(Color.Transparent)
-                        .size(bigIcon.second)
-                        .aspectRatio(1f)
-                        .clip(
-                            CircleShape,
+                        .then(
+                            if (useGradientPlayButton) {
+                                Modifier
+                                    .size(64.dp)
+                                    .shadow(
+                                        elevation = 12.dp,
+                                        shape = CircleShape,
+                                        spotColor = Color(0xFFA855F7).copy(alpha = 0.45f),
+                                        ambientColor = Color.Transparent,
+                                    ).background(
+                                        brush =
+                                            Brush.horizontalGradient(
+                                                listOf(Color(0xFFA855F7), Color(0xFF7C3AED)),
+                                            ),
+                                        shape = CircleShape,
+                                    )
+                            } else {
+                                Modifier
+                                    .background(Color.Transparent)
+                                    .size(bigIcon.second)
+                                    .aspectRatio(1f)
+                                    .clip(CircleShape)
+                            },
                         )
                         .clickable {
                             onUIEvent(UIEvent.PlayPause)
@@ -142,17 +165,17 @@ fun PlayerControlLayout(
                 Crossfade(targetState = controllerState.isPlaying) { isPlaying ->
                     if (!isPlaying) {
                         Icon(
-                            imageVector = if (plainPlayPause) SimpIcons.PlayArrow else SimpIcons.PlayCircle,
+                            imageVector = if (plainPlayPause || useGradientPlayButton) SimpIcons.PlayArrow else SimpIcons.PlayCircle,
                             tint = contentColor,
                             contentDescription = "",
-                            modifier = Modifier.size(bigIcon.first),
+                            modifier = Modifier.size(if (useGradientPlayButton) 32.dp else bigIcon.first),
                         )
                     } else {
                         Icon(
-                            imageVector = if (plainPlayPause) SimpIcons.Pause else SimpIcons.PauseCircle,
+                            imageVector = if (plainPlayPause || useGradientPlayButton) SimpIcons.Pause else SimpIcons.PauseCircle,
                             tint = contentColor,
                             contentDescription = "",
-                            modifier = Modifier.size(bigIcon.first),
+                            modifier = Modifier.size(if (useGradientPlayButton) 32.dp else bigIcon.first),
                         )
                     }
                 }

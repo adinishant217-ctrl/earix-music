@@ -10,6 +10,9 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- In-app updates: lets the system DownloadManager + package installer
+         complete an APK download started from Settings / the update dialog. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- Only Android 9 and older need this: there MediaStore still writes through shared
          storage. From Android 10 an app writing its own new image needs no permission, and
          SaveImagePermission grants without asking — so the declaration stops at 28 to match. -->
@@ -195,12 +198,18 @@
             android:name="androidx.startup.InitializationProvider"
             android:authorities="${applicationId}.androidx-startup"
             android:exported="false"
-            tools:node="merge">
-            <meta-data
-                android:name="androidx.work.WorkManagerInitializer"
-                android:value="androidx.startup"
-                tools:node="remove" />
-        </provider>
+            tools:node="remove" />
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.FileProvider"
+            android:exported="false"
+            android:grantUriPermissions="true"
+            tools:node="remove" />
+        <provider
+            android:name="io.sentry.android.core.SentryInitProvider"
+            android:authorities="${applicationId}.io.sentry.init"
+            android:exported="false"
+            tools:node="remove" />
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.FileProvider"
@@ -273,11 +282,6 @@
                 <category android:name="androidx.car.app.category.MEDIA" />
             </intent-filter>
         </service>
-
-
-        <meta-data
-            android:name="io.sentry.auto-init"
-            android:value="false" />
 
 
         <receiver android:name=".ui.widget.TurntableWidgetReceiver"

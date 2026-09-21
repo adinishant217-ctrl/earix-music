@@ -1,5 +1,3 @@
-import java.util.Properties
-
 val isFullBuild: Boolean =
     try {
         extra["isFullBuild"] == "true"
@@ -9,7 +7,6 @@ val isFullBuild: Boolean =
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.sentry.gradle)
     alias(libs.plugins.compose.compiler)
 }
 
@@ -182,95 +179,5 @@ dependencies {
         implementation(projects.crashlytics)
     } else {
         implementation(projects.crashlyticsEmpty)
-    }
-}
-
-sentry {
-    org.set("simpmusic")
-    projectName.set("android")
-    ignoredFlavors.set(setOf("foss"))
-    ignoredBuildTypes.set(setOf("debug"))
-    autoInstallation.enabled = false
-    if (isFullBuild) {
-        val token =
-            try {
-                println("Full build detected, enabling Sentry Auth Token")
-                val properties = Properties()
-                properties.load(rootProject.file("local.properties").inputStream())
-                properties.getProperty("SENTRY_AUTH_TOKEN")
-            } catch (e: Exception) {
-                println("Failed to load SENTRY_AUTH_TOKEN from local.properties: ${e.message}")
-                null
-            }
-        authToken.set(token ?: "")
-        includeProguardMapping.set(true)
-        autoUploadProguardMapping.set(true)
-    } else {
-        includeProguardMapping.set(false)
-        autoUploadProguardMapping.set(false)
-        uploadNativeSymbols.set(false)
-        includeDependenciesReport.set(false)
-        includeSourceContext.set(false)
-        includeNativeSources.set(false)
-    }
-    telemetry.set(false)
-}
-
-if (!isFullBuild) {
-    abstract class CleanSentryMetaTask : DefaultTask() {
-        @get:InputFiles
-        abstract val assetDirectories: ConfigurableFileCollection
-
-        @get:Internal
-        abstract val buildDirectory: DirectoryProperty
-
-        @TaskAction
-        fun execute() {
-            assetDirectories.forEach { assetDir ->
-                val sentryFile = File(assetDir, "sentry-debug-meta.properties")
-                if (sentryFile.exists()) {
-                    sentryFile.delete()
-                    println("Deleted: ${sentryFile.absolutePath}")
-                }
-            }
-
-            val dirName = "release/mergeReleaseAssets"
-            val injectDirName = "release/injectSentryDebugMetaPropertiesIntoAssetsRelease"
-            println("Cleaning Sentry meta files in build directories")
-            println("Build directory: ${buildDirectory.asFile.get().absolutePath}")
-
-            val buildAssetsDir = File(buildDirectory.asFile.get(), "intermediates/assets/$dirName")
-            println("Checking directory buildAssetsDir: ${buildAssetsDir.absolutePath}")
-            val sentryFile = File(buildAssetsDir, "sentry-debug-meta.properties")
-            if (sentryFile.exists()) {
-                sentryFile.delete()
-                println("Deleted: ${sentryFile.absolutePath}")
-            }
-
-            val injectBuildAssetsDir = File(buildDirectory.asFile.get(), "intermediates/assets/$injectDirName")
-            println("Checking directory injectBuildAssetsDir: ${injectBuildAssetsDir.absolutePath}")
-            val injectSentryFile = File(injectBuildAssetsDir, "sentry-debug-meta.properties")
-            if (injectSentryFile.exists()) {
-                injectSentryFile.delete()
-                println("Deleted: ${injectSentryFile.absolutePath}")
-                val sentryFile = File(injectBuildAssetsDir, "sentry-debug-meta.properties")
-                sentryFile.writeText("")
-                println("✓ Overwritten: ${sentryFile.absolutePath}")
-            }
-        }
-    }
-
-    tasks.whenTaskAdded {
-        if (name.contains("injectSentryDebugMetaPropertiesIntoAssetsRelease")) {
-            val cleanSentryMetaTaskName = "cleanSentryMetaForRelease"
-            val cleanSentryMetaTask =
-                tasks.register<CleanSentryMetaTask>(cleanSentryMetaTaskName) {
-                    assetDirectories.from(android.sourceSets.flatMap { it.assets.directories })
-                    buildDirectory.set(layout.buildDirectory)
-                }
-            tasks.named(name).configure {
-                finalizedBy(cleanSentryMetaTask)
-            }
-        }
     }
 }

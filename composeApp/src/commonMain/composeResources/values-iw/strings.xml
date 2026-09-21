@@ -115,10 +115,7 @@
     <string name="restore_your_saved_data">שחזר את הנתונים השמורים שלך</string>
     <string name="about_us">אודותינו</string>
     <string name="version">גרסה</string>
-    <string name="github">גיטהאב</string>
-    <string name="maxrave_dev">maxrave-dev</string>
-    <string name="buy_me_a_coffee">קנה לי קפה</string>
-    <string name="paypal">פיי-פאל</string>
+<string name="paypal">פיי-פאל</string>
     <string name="title">כותרת</string>
     <string name="album">אלבום</string>
     <string name="youtube_url">קישור ליו-טיוב</string>
@@ -134,7 +131,7 @@
     <string name="albums_inArtist">אלבומים</string>
     <string name="singles_inArtist">יחידים</string>
     <string name="fans_might_also_like_inArtist">אולי גם המעריצים יאהבו</string>
-    <string name="crash_log">SimpMusic התרסק. סליחה על הבעיה הזו.\nשלח יומן קריסה למפתח</string>
+    <string name="crash_log">Earix התרסק. סליחה על הבעיה הזו.\nשלח יומן קריסה למפתח</string>
     <string name="crash">קריסה</string>
     <string name="send">שלח</string>
     <string name="mail_subject">דווח על קריסה</string>
@@ -168,11 +165,6 @@
     <string name="time_out_check_internet_connection_or_change_piped_instance_in_settings">(%1$s) פסק זמן, בדוק את החיבור לאינטרנט</string>
     <string name="save_last_played">שמור הושמע לאחרונה</string>
     <string name="save_last_played_track_and_queue">שמור את הרצועה האחרונה שהושמעה ואת התור</string>
-    <string name="update_available">עדכון חדש זמין</string>
-    <string name="update_message">"גרסה %1$s זמין\nלשחרר:%2$s\nיומני שינוי:\n%3$s "</string>
-    <string name="check_for_update">בדוק עדכונים</string>
-    <string name="last_checked_at">נבדק לאחרונה ב %1$s</string>
-    <string name="checking">בודק</string>
     <string name="sponsorblock_skip_segment">חסימת חסות: דלג %1$s קטע</string>
     <string name="sponsor">חסות</string>
     <string name="self_promotion">קידום עצמי</string>
@@ -189,7 +181,7 @@
     <string name="what_segments_will_be_skipped">על אילו קטעים ידלגו</string>
     <string name="save">שמור</string>
     <string name="saved">נשמר</string>
-    <string name="sponsor_block_intro">חסימת חסות היא מערכת ממקור המונים לדילוג על חלקים מעצבנים בסרטוני יוטיוב.\nמידע נוסף: https://sponsor.ajay.app/\n ב-SimpMusic, חסימת חסות זמין רק כאשר המכשיר מחובר לאינטרנט</string>
+    <string name="sponsor_block_intro">חסימת חסות היא מערכת ממקור המונים לדילוג על חלקים מעצבנים בסרטוני יוטיוב.\nמידע נוסף: https://sponsor.ajay.app/\n ב-Earix, חסימת חסות זמין רק כאשר המכשיר מחובר לאינטרנט</string>
     <string name="skip_sponsor_part_of_video">דלג על חלק נותני החסות בסרטון</string>
     <string name="customactivityoncrash_error_activity_error_occurred_explanation">שגיאה לא צפויה התרחשה. מצטער על אי הנוחות.</string>
     <string name="customactivityoncrash_error_activity_restart_app">הפעל מחדש את האפליקציה</string>
@@ -227,7 +219,7 @@
     <string name="saved_to_local_playlist">נשמר ברשימת השמעה מקומית</string>
     <string name="if_you_want_to_unsync_this_playlist_please_go_to_local_playlist">אם ברצונך לבטל את הסנכרון של רשימת השמעה זו, אנא עבור לרשימת השמעה המקומי</string>
     <string name="log_in_to_get_YouTube_playlist">התחבר כדי לקבל רשימת השמעה של יוטיוב</string>
-    <string name="sync_playlist_warning">SimpMusic תיצור רשימת השמעה של יוטיוב מיוזיק באופן אוטומטי. האם אתה בטוח?</string>
+    <string name="sync_playlist_warning">Earix תיצור רשימת השמעה של יוטיוב מיוזיק באופן אוטומטי. האם אתה בטוח?</string>
     <string name="syncing">מסנכרן</string>
     <string name="unsync_playlist_warning">"לבטל את הסנכרון של הפלייליסט הזה? הפלייליסט הזה לא יוסר מיוטיוב מיוזיק "</string>
     <string name="unsyncing">מבטל סנכרון</string>
@@ -242,24 +234,19 @@
     <string name="email">אימייל</string>
     <string name="password">סיסמה</string>
     <string name="please_enter_your_email_and_password">נא להזין דוא״ל וסיסמא</string>
-    <string name="translation_language_message">הקלד קוד שפה (למשל: en) (2 אותיות). אם אתה רוצה להגדיר אותו דבר עם השפה של SimpMusic, אנא הפוך את תיבת העריכה לריקה.</string>
+    <string name="translation_language_message">הקלד קוד שפה (למשל: en) (2 אותיות). אם אתה רוצה להגדיר אותו דבר עם השפה של Earix, אנא הפוך את תיבת העריכה לריקה.</string>
     <string name="invalid_language_code">קוד שפה לא חוקי</string>
     <string name="lyrics_provider_youtube">מילים מסופקות על ידי יוטיוב</string>
     <string name="limit_player_cache">הגבל את מטמון הנגן</string>
     <string name="unlimited">ללא הגבלה</string>
-    <string name="third_party_libraries">ספריות צד שלישי</string>
-    <string name="description_and_licenses">תיאור ורישיונות</string>
-    <string name="author">מחבר</string>
     <string name="other_app">יישום אחר</string>
     <string name="database">מסד נתונים של אפליקציה</string>
     <string name="free_space">מקום פנוי</string>
     <string name="suggest">הצעה</string>
     <string name="reload">טען מחדש</string>
     <string name="added_date">נוסף תאריך</string>
-    <string name="credit_app">אפליקציית מוזיקה פשוטה באמצעות YouTube Music עבור backend \n\nSimpMusic הוא פרויקט קוד פתוח להזרמת מוזיקה מ-YouTube ו-YouTube Music ללא מודעות ומעקב. SimpMusic מספקת תכונות רבות:\n\n - הזרמת מוזיקה \n - מילים מסונכרנות\n - התאמה אישית של נתונים\n - אקו… \n\n
-SimpMusic תמיד בחינם וללא פרסומות\n\nבונה מ ❤️מ-Tuan Minh Nguyen Duc (maxrave-dev)</string>
-    <string name="issue_tracker">מעקב סוגיות</string>
-    <string name="featured_playlists">רשימות השמעה נבחרות</string>
+    <string name="credit_app">אפליקציית מוזיקה פשוטה באמצעות YouTube Music עבור backend </string>
+<string name="featured_playlists">רשימות השמעה נבחרות</string>
     <string name="featured_inArtist">מצורף ב</string>
     <string name="audio_quality">איכות אודיו</string>
     <string name="play_video_for_video_track_instead_of_audio_only">הפעל וידאו עבור רצועת וידאו במקום אודיו בלבד</string>
@@ -300,7 +287,7 @@ SimpMusic תמיד בחינם וללא פרסומות\n\nבונה מ ❤️מ-Tu
     <string name="enable_spotify_lyrics">אפשר ספוטיפיי מילים</string>
     <string name="spotify_lyrícs_info">עוד מילים ללא תרגום</string>
     <string name="enable_canvas">הפעל את קנבס</string>
-    <string name="canvas_info">הצג את ספוטיפיי קנבס ב-SimpMusic</string>
+    <string name="canvas_info">הצג את ספוטיפיי קנבס ב-Earix</string>
     <string name="spotify_lyrics_provider">מילים מסופקות על ידי ספוטיפיי</string>
     <string name="offline_mode">מצב לא מקוון</string>
     <string name="added_to_youtube_liked">נוסף ליוטיוב 'אהבתי'</string>
@@ -331,7 +318,6 @@ SimpMusic תמיד בחינם וללא פרסומות\n\nבונה מ ❤️מ-Tu
     <string name="user_interface">ממשק</string>
     <string name="translucent_bottom_navigation_bar">סרגל ניווט תחתון שקוף</string>
     <string name="you_can_see_the_content_below_the_bottom_bar">אתה יכול לראות את התוכן מתחת לסרגל התחתון</string>
-    <string name="donation">אם אתה אוהב את העבודה שלי, תן ​​לי קפה</string>
     <string name="relax">לְהִרָגַע</string>
     <string name="sleep">שינה</string>
     <string name="energize">אנרגיה מידית</string>

@@ -184,7 +184,6 @@ kotlin {
             // shared JVM UI + expect/actuals and their direct dependencies.
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutinesSwing)
-            implementation(libs.sentry.jvm)
             implementation(libs.native.tray)
             implementation(projects.mediaJvmUi)
         }
@@ -829,13 +828,12 @@ buildkonfig {
 
         if (isFullBuild) {
             try {
-                println("Full build detected, enabling Sentry DSN")
                 val properties = Properties()
                 properties.load(rootProject.file("local.properties").inputStream())
                 buildConfigField(
                     STRING,
                     "sentryDsn",
-                    properties.getProperty("SENTRY_DSN") ?: "",
+                    "",
                 )
                 buildConfigField(
                     STRING,

@@ -35,13 +35,6 @@ jobs:
           distribution: "microsoft"
           cache: 'gradle'
 
-      - name: Update Sentry Secrets
-        env:
-          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-        run: |
-          echo 'SENTRY_DSN=${{ secrets.SENTRY_DSN }}' > ./local.properties
-          echo "SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}" >> ./local.properties
 
       - name: Update Last.fm secrets
         env:
@@ -148,13 +141,6 @@ jobs:
           echo "" >> ./gradle.properties
           echo "isFullBuild=true" >> ./gradle.properties
 
-      - name: Update Sentry Secrets
-        env:
-          SENTRY_DSN: ${{ secrets.SENTRY_DSN_JVM }}
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-        run: |
-          echo 'SENTRY_DSN=${{ secrets.SENTRY_DSN_JVM }}' > ./local.properties
-          echo "SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}" >> ./local.properties
 
       - name: Update Last.fm secrets
         env:

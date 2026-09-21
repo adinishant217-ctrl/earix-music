@@ -76,9 +76,6 @@ kotlin {
                 // Swing dispatcher for kotlinx.coroutines on the JVM.
                 implementation(libs.kotlinx.coroutinesSwing)
 
-                // Sentry crash reporting (full builds only via BuildKonfig).
-                implementation(libs.sentry.jvm)
-
                 // System tray icon for desktop builds.
                 implementation(libs.native.tray)
 

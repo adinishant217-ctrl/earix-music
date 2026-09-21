@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -38,6 +39,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -45,6 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.font.FontWeight
@@ -65,7 +68,6 @@ import com.maxrave.domain.manager.DataStoreManager.Values.TRUE
 import com.maxrave.logger.Logger
 import com.maxrave.simpmusic.expect.Orientation
 import com.maxrave.simpmusic.expect.currentOrientation
-import com.maxrave.simpmusic.expect.openUrl
 import com.maxrave.simpmusic.expect.ui.layerBackdrop
 import com.maxrave.simpmusic.expect.ui.rememberBackdrop
 import com.maxrave.simpmusic.extension.copy
@@ -95,16 +97,22 @@ import com.maxrave.simpmusic.ui.theme.desktopPanelDark
 import com.maxrave.simpmusic.ui.theme.desktopWindowDark
 import com.maxrave.simpmusic.ui.theme.desktopWindowLight
 import com.maxrave.simpmusic.ui.theme.fontFamily
-import com.maxrave.simpmusic.ui.theme.parseThemeColorHex
-import com.maxrave.simpmusic.ui.theme.typo
 import com.maxrave.simpmusic.utils.VersionManager
+import com.maxrave.simpmusic.ui.theme.parseThemeColorHex
+import com.maxrave.simpmusic.ui.screen.splash.EarixSplashOverlay
+import com.maxrave.simpmusic.expect.openUrl
+import com.maxrave.simpmusic.ui.theme.typo
+import com.maxrave.simpmusic.update.UpdateCheckResult
+import com.maxrave.simpmusic.update.UpdateResultDialog
+import com.maxrave.simpmusic.update.downloadUpdateApk
+import com.maxrave.simpmusic.update.fetchLatestUpdate
 import com.maxrave.simpmusic.viewModel.SharedViewModel
-import com.mikepenz.markdown.m3.Markdown
-import com.mikepenz.markdown.m3.markdownTypography
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.materials.HazeMaterials
 import dev.chrisbanes.haze.rememberHazeState
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
@@ -113,22 +121,20 @@ import kotlinx.datetime.format.MonthNames
 import kotlinx.datetime.format.char
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.getString
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import simpmusic.composeapp.generated.resources.Res
 import simpmusic.composeapp.generated.resources.cancel
 import simpmusic.composeapp.generated.resources.do_not_show_again
-import simpmusic.composeapp.generated.resources.download
+import simpmusic.composeapp.generated.resources.download_started
+import simpmusic.composeapp.generated.resources.earix_background
 import simpmusic.composeapp.generated.resources.good_night
 import simpmusic.composeapp.generated.resources.notification
 import simpmusic.composeapp.generated.resources.settings
 import simpmusic.composeapp.generated.resources.sleep_timer_off
 import simpmusic.composeapp.generated.resources.this_app_needs_to_access_your_notification
 import simpmusic.composeapp.generated.resources.this_link_is_not_supported
-import simpmusic.composeapp.generated.resources.unknown
-import simpmusic.composeapp.generated.resources.update_available
-import simpmusic.composeapp.generated.resources.update_message
-import simpmusic.composeapp.generated.resources.version_format
 import simpmusic.composeapp.generated.resources.yes
 import kotlin.time.ExperimentalTime
 
@@ -146,7 +152,6 @@ fun App(
 
     val sleepTimerState by viewModel.sleepTimerState.collectAsStateWithLifecycle()
     val nowPlayingData by viewModel.nowPlayingState.collectAsStateWithLifecycle()
-    val updateData by viewModel.updateResponse.collectAsStateWithLifecycle()
     val intent by viewModel.intent.collectAsStateWithLifecycle()
     val showNotificationPermissionDialog by viewModel.showNotificationPermissionDialog.collectAsStateWithLifecycle()
 
@@ -160,7 +165,8 @@ fun App(
     val isYouTubeLoggedIn by viewModel.getYouTubeLoggedIn().collectAsStateWithLifecycle(DataStoreManager.FALSE)
     val showMixForYouTab = isYouTubeLoggedIn == TRUE
 
-    val themeMode by viewModel.getThemeMode().collectAsStateWithLifecycle(DataStoreManager.THEME_MODE_DARK)
+    // Earix is dark-only: the theme preference is never read, so a stored
+    // light/system value can never take effect.
     val themeColorSource by viewModel.getThemeColorSource().collectAsStateWithLifecycle(DataStoreManager.THEME_COLOR_DEFAULT)
     val customThemeColorHex by viewModel.getCustomThemeColor().collectAsStateWithLifecycle(DataStoreManager.DEFAULT_THEME_COLOR_HEX)
     // MiniPlayer visibility: derived, never stored.
@@ -194,8 +200,17 @@ fun App(
         mutableStateOf(true)
     }
 
-    var shouldShowUpdateDialog by rememberSaveable {
-        mutableStateOf(false)
+    // In-app updates: one silent GitHub check per cold start, a few seconds
+    // after launch so startup stays fast. Only a NEWER release with an APK
+    // attached surfaces a dialog; anything else stays silent.
+    var autoUpdateResult by remember { mutableStateOf<UpdateCheckResult?>(null) }
+    val updateToastScope = rememberCoroutineScope()
+    LaunchedEffect(Unit) {
+        delay(4_000L)
+        when (val result = fetchLatestUpdate()) {
+            is UpdateCheckResult.Available -> autoUpdateResult = result
+            else -> Unit
+        }
     }
 
     val hazeState =
@@ -366,15 +381,6 @@ fun App(
         }
     }
 
-    LaunchedEffect(updateData) {
-        val response = updateData ?: return@LaunchedEffect
-        if (viewModel.showedUpdateDialog &&
-            response.tagName != getString(Res.string.version_format, VersionManager.getVersionName())
-        ) {
-            shouldShowUpdateDialog = true
-        }
-    }
-
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     LaunchedEffect(navBackStackEntry) {
         Logger.d("MainActivity", "Current destination: ${navBackStackEntry?.destination?.route}")
@@ -429,7 +435,7 @@ fun App(
     val isTabletLandscape = isTablet && currentOrientation() == Orientation.LANDSCAPE
 
     AppTheme(
-        themeMode = themeMode,
+        themeMode = DataStoreManager.THEME_MODE_DARK,
         themeColorSource = themeColorSource,
         customThemeColor = parseThemeColorHex(customThemeColorHex),
         // Desktop is unconditionally true — the liquid-glass setting row is Android-only, and the
@@ -447,9 +453,24 @@ fun App(
         val desktopWindow = if (isLightScheme) desktopWindowLight else desktopWindowDark
         val desktopPanel =
             if (isLightScheme) MaterialTheme.colorScheme.surfaceContainer else desktopPanelDark
-        Scaffold(
-            containerColor =
-                if (isDesktopShell) desktopWindow else MaterialTheme.colorScheme.background,
+        // Earix cosmic background: fixed image + dark overlay behind everything.
+        // Scaffold is transparent so it shows through; screens keep transparent roots.
+        Box(Modifier.fillMaxSize()) {
+            Image(
+                painter = painterResource(Res.drawable.earix_background),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+                alpha = 0.6f,
+            )
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(Color(0x8C0D0618)),
+            )
+            Scaffold(
+                containerColor =
+                    if (isDesktopShell) desktopWindow else Color.Transparent,
             bottomBar = {
                 if (!isTablet) {
                     AnimatedVisibility(
@@ -700,6 +721,21 @@ fun App(
                     }
                 }
 
+                autoUpdateResult?.let { result ->
+                    UpdateResultDialog(
+                        result = result,
+                        currentVersion = VersionManager.getVersionName(),
+                        onDownload = { info ->
+                            downloadUpdateApk(info.apkUrl, info.fileName)
+                            updateToastScope.launch {
+                                viewModel.makeToast(getString(Res.string.download_started))
+                            }
+                        },
+                        onOpenReleases = { url -> openUrl(url) },
+                        onDismiss = { autoUpdateResult = null },
+                    )
+                }
+
                 if (sleepTimerState.isDone) {
                     Logger.w("MainActivity", "Sleep Timer Done: $sleepTimerState")
                     AlertDialog(
@@ -732,127 +768,6 @@ fun App(
                                 stringResource(Res.string.good_night),
                                 style = typo().bodySmall,
                             )
-                        },
-                    )
-                }
-
-                if (shouldShowUpdateDialog) {
-                    val response = updateData ?: return@Scaffold
-                    AlertDialog(
-                        properties =
-                            DialogProperties(
-                                dismissOnBackPress = false,
-                                dismissOnClickOutside = false,
-                            ),
-                        onDismissRequest = {
-                            shouldShowUpdateDialog = false
-                            viewModel.showedUpdateDialog = false
-                        },
-                        confirmButton = {
-                            TextButton(
-                                onClick = {
-                                    shouldShowUpdateDialog = false
-                                    viewModel.showedUpdateDialog = false
-                                    openUrl("https://simpmusic.org/download")
-                                },
-                            ) {
-                                Text(
-                                    stringResource(Res.string.download),
-                                    style = typo().bodySmall,
-                                )
-                            }
-                        },
-                        dismissButton = {
-                            TextButton(
-                                onClick = {
-                                    shouldShowUpdateDialog = false
-                                    viewModel.showedUpdateDialog = false
-                                },
-                            ) {
-                                Text(
-                                    stringResource(Res.string.cancel),
-                                    style = typo().bodySmall,
-                                )
-                            }
-                        },
-                        title = {
-                            Text(
-                                stringResource(Res.string.update_available),
-                                style = typo().labelSmall,
-                            )
-                        },
-                        text = {
-                            val formatted =
-                                response.releaseTime?.let { input ->
-                                    try {
-                                        val instant = kotlin.time.Instant.parse(input)
-                                        val dateTime = instant.toLocalDateTime(TimeZone.currentSystemDefault())
-                                        dateTime.format(
-                                            LocalDateTime.Format {
-                                                day()
-                                                char(' ')
-                                                monthName(MonthNames.ENGLISH_ABBREVIATED)
-                                                char(' ')
-                                                year()
-                                                char(' ')
-                                                hour()
-                                                char(':')
-                                                minute()
-                                                char(':')
-                                                second()
-                                            },
-                                        )
-                                    } catch (e: Exception) {
-                                        stringResource(Res.string.unknown)
-                                    }
-                                } ?: stringResource(Res.string.unknown)
-
-                            val updateMessage =
-                                runBlocking {
-                                    getString(
-                                        Res.string.update_message,
-                                        response.tagName,
-                                        formatted,
-                                    )
-                                }
-                            Column(
-                                Modifier
-                                    .heightIn(
-                                        max = 400.dp,
-                                    ).verticalScroll(
-                                        rememberScrollState(),
-                                    ),
-                            ) {
-                                Text(
-                                    text = updateMessage,
-                                    style = typo().labelMedium,
-                                    modifier =
-                                        Modifier.padding(
-                                            vertical = 8.dp,
-                                        ),
-                                )
-                                Markdown(
-                                    response.body,
-                                    typography =
-                                        markdownTypography(
-                                            h1 = typo().labelLarge,
-                                            h2 = typo().labelMedium,
-                                            h3 = typo().labelSmall,
-                                            text = typo().bodySmall,
-                                            bullet = typo().bodySmall,
-                                            paragraph = typo().bodySmall,
-                                            textLink =
-                                                TextLinkStyles(
-                                                    SpanStyle(
-                                                        fontSize = 11.sp,
-                                                        fontWeight = FontWeight.Normal,
-                                                        fontFamily = fontFamily(),
-                                                        textDecoration = TextDecoration.Underline,
-                                                    ),
-                                                ),
-                                        ),
-                                )
-                            }
                         },
                     )
                 }
@@ -941,5 +856,9 @@ fun App(
                 }
             },
         )
+        }
+        // Earix cold-start splash overlay (APPROACH B): Home stays the start
+        // destination; the splash floats above until its timer finishes.
+        EarixSplashOverlay()
     }
 }

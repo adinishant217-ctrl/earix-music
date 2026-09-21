@@ -120,12 +120,7 @@
     <string name="restore_your_saved_data">अपना सहेजा गया डेटा पुनर्स्थापित करें</string>
     <string name="about_us">हमारे बारे में</string>
     <string name="version">संस्करण</string>
-    <string name="github">गिट्हब</string>
-    <string name="maxrave_dev">मैक्सरेव-देव</string>
-    <string name="buy_me_a_coffee">मुझे एक कॉफी खरीदें</string>
-    <string name="developer_blog">डेवलपर ब्लॉग</string>
-    <string name="blog_promo_message">मैंने अभी-अभी अपना व्यक्तिगत ब्लॉग maxrave.dev शुरू किया है — इसमें मैं SimpMusic के पीछे की कहानी, संगीत-तकनीक से जुड़ी गहराई से की गई जानकारियाँ और अपने इंजीनियरिंग से जुड़े अनुभव व नोट्स साझा कर रहा हूँ। अगर आपको ऐसी चीज़ों के बारे में जानना पसंद है, तो एक बार ज़रूर पढ़िए ✨</string>
-    <string name="paypal">पेयपाल</string>
+<string name="paypal">पेयपाल</string>
     <string name="title">शीर्षक</string>
     <string name="album">एल्बम</string>
     <string name="youtube_url">यूट्यूब यूआरएल</string>
@@ -176,10 +171,6 @@
     <string name="time_out_check_internet_connection_or_change_piped_instance_in_settings">समय समाप्त, इंटरनेट कनेक्शन जांचें (%1$s)</string>
     <string name="save_last_played">अंतिम चलाया गया सहेजें</string>
     <string name="save_last_played_track_and_queue">अंतिम चलाया गया गाना और कतार सहेजें</string>
-    <string name="update_available">नया अपडेट उपलब्ध है</string>
-    <string name="check_for_update">अपडेट के लिए जांचें</string>
-    <string name="last_checked_at">आखिरी जांच %1$s को</string>
-    <string name="checking">जांच हो रही है</string>
     <string name="sponsorblock_skip_segment">स्पॉन्सरब्लॉक: %1$s सेगमेंट छोड़ें</string>
     <string name="sponsor">प्रायोजक</string>
     <string name="self_promotion">स्व-प्रचार</string>
@@ -259,9 +250,6 @@
     <string name="lyrics_provider_betterlyrics">Lyrics उपलब्ध कराने के लिए BetterLyrics का धन्यवाद</string>
     <string name="limit_player_cache">प्लेयर कैश सीमित करें</string>
     <string name="unlimited">असीमित</string>
-    <string name="third_party_libraries">थर्ड पार्टी लाइब्रेरी</string>
-    <string name="description_and_licenses">विवरण और लाइसेंस</string>
-    <string name="author">लेखक</string>
     <string name="other_app">अन्य ऐप</string>
     <string name="database">ऐप डेटाबेस</string>
     <string name="free_space">खाली स्थान</string>
@@ -272,9 +260,8 @@
     <string name="older_first">पुराने पहले</string>
     <string name="newer_first">नए पहले</string>
     <string name="added_date">जोड़ने की तिथि</string>
-    <string name="credit_app">बैकएंड के लिए YouTube Music का उपयोग करने वाला एक सरल संगीत ऐप \n\nSimpMusic YouTube और YouTube Music से बिना विज्ञापनों और ट्रैकिंग के संगीत स्ट्रीम करने के लिए एक ओपन सोर्स प्रोजेक्ट है। SimpMusic कई सुविधाएं प्रदान करता है:\n\n - संगीत स्ट्रीमिंग \n - सिंक किए गए गाने के बोल\n - व्यक्तिगत डेटा\n - और बहुत कुछ… \n\nSimpMusic हमेशा मुफ्त और बिना विज्ञापनों के है\n\nतुआन मिन्ह न्गुयेन डक (maxrave-dev) द्वारा ❤️ से बनाया गया</string>
-    <string name="issue_tracker">समस्या ट्रैकर</string>
-    <string name="featured_playlists">विशेष प्लेलिस्ट</string>
+    <string name="credit_app">बैकएंड के लिए YouTube Music का उपयोग करने वाला एक सरल संगीत ऐप </string>
+<string name="featured_playlists">विशेष प्लेलिस्ट</string>
     <string name="featured_inArtist">पर प्रदर्शित</string>
     <string name="audio_quality">ऑडियो गुणवत्ता</string>
     <string name="play_video_for_video_track_instead_of_audio_only">केवल ऑडियो के बजाय वीडियो ट्रैक के लिए वीडियो चलाएं</string>
@@ -311,7 +298,7 @@
     <string name="enable_spotify_lyrics">Spotify लिरिक्स सक्षम करें</string>
     <string name="spotify_lyrícs_info">बिना अनुवाद के अधिक गीत</string>
     <string name="enable_canvas">कैनवास सक्षम करें</string>
-    <string name="canvas_info">SimpMusic में Spotify कैनवास दिखाएं</string>
+    <string name="canvas_info">Earix में Spotify कैनवास दिखाएं</string>
     <string name="spotify_lyrics_provider">गीत Spotify द्वारा प्रदान किए गए</string>
     <string name="offline_mode">ऑफ़लाइन मोड</string>
     <string name="added_to_youtube_liked">YouTube पसंदीदा में जोड़ा गया</string>
@@ -342,7 +329,6 @@
     <string name="user_interface">इंटरफ़ेस</string>
     <string name="translucent_bottom_navigation_bar">पारदर्शी बॉटम नेविगेशन बार</string>
     <string name="you_can_see_the_content_below_the_bottom_bar">आप बॉटम बार के नीचे सामग्री देख सकते हैं</string>
-    <string name="donation">यदि आपको मेरा काम पसंद है, तो मुझे एक कॉफी दें</string>
     <string name="relax">आराम</string>
     <string name="sleep">नींद</string>
     <string name="energize">ऊर्जावान</string>
@@ -360,7 +346,7 @@
     <string name="loading">लोड हो रहा है</string>
     <string name="updating">अपडेट हो रहा है</string>
     <string name="go_to_log_in_page">लॉग इन पेज पर जाएं</string>
-    <string name="log_in_warning">अब YouTube Music को संगीत स्ट्रीम करने के लिए आपको लॉग इन करने की आवश्यकता है, Piped इंस्टेंस कभी-कभी काम नहीं कर सकता है। आपको SimpMusic के साथ बेहतर अनुभव प्राप्त करने के लिए YouTube में लॉग इन करना चाहिए।</string>
+    <string name="log_in_warning">अब YouTube Music को संगीत स्ट्रीम करने के लिए आपको लॉग इन करने की आवश्यकता है, Piped इंस्टेंस कभी-कभी काम नहीं कर सकता है। आपको Earix के साथ बेहतर अनुभव प्राप्त करने के लिए YouTube में लॉग इन करना चाहिए।</string>
     <string name="spotify_canvas_cache">स्पॉटिफाए कैनवास कैश</string>
     <string name="clear_canvas_cache">कैनवास कैश साफ़ करें</string>
     <string name="proxy">प्रॉक्सी</string>
@@ -379,8 +365,6 @@
     <string name="sync_first">पहले इस प्लेलिस्ट को YouTube Music के साथ सिंक करें</string>
     <string name="endless_queue">अंतहीन कतार</string>
     <string name="do_not_show_again">दोबारा न दिखाएं</string>
-    <string name="auto_check_for_update">अपडेट की स्वतः जाँच</string>
-    <string name="auto_check_for_update_description">ऐप खोलते समय अपडेट की जाँच करना</string>
     <string name="playback_speed_pitch"><![CDATA[प्लेबैक गति और पिच]]></string>
     <string name="playback_speed">प्लेबैक गति</string>
     <string name="pitch">पिच</string>
@@ -393,11 +377,7 @@
     <string name="download_speed">डाउनलोड गति: %1$s </string>
     <string name="shuffle">शफ़ल</string>
     <string name="other_version">अन्य वर्ज़न</string>
-    <string name="later">बाद में</string>
-    <string name="give_a_star">एक सितारा दें</string>
-    <string name="enjoying_simpmusic">सिम्पम्यूजिक का आनंद ले रहे हैं</string>
-    <string name="if_you_enjoy_using_simpmusic_star_simpmusic_on_github_or_leave_a_review_on">यदि आपको सिम्पम्यूजिक का उपयोग करना अच्छा लगता है, तो गिटहब पर सिम्पम्यूजिक को स्टार करें या समीक्षा लिखें</string>
-    <string name="if_you_love_my_work_consider">"अगर आपको मेरा काम पसंद आए, तो "</string>
+<string name="if_you_love_my_work_consider">"अगर आपको मेरा काम पसंद आए, तो "</string>
     <string name="buying_me_a_coffee">मुझे एक कॉफ़ी देकर समर्थन करें।</string>
     <string name="fade_audio_effect">ऑडियो प्रभाव फीका करें</string>
     <string name="disabled">अक्षम करें</string>
@@ -426,8 +406,7 @@
     <string name="your_youtube_cookie">आपकी यूट्यूब कुकी</string>
     <string name="can_not_be_empty">खाली नहीं हो सकता</string>
     <string name="processing">प्रसंस्करण</string>
-    <string name="website">वेबसाइट</string>
-    <string name="download_this_song_video_file_to_your_device">इस गीत/वीडियो फ़ाइल को अपने डिवाइस पर डाउनलोड करें</string>
+<string name="download_this_song_video_file_to_your_device">इस गीत/वीडियो फ़ाइल को अपने डिवाइस पर डाउनलोड करें</string>
     <string name="kill_service_on_exit">बाहर निकलने पर सेवा समाप्त करें</string>
     <string name="kill_service_on_exit_description">ऐप से बाहर निकलते समय बैकग्राउंड म्यूजिक प्लेयर बंद करें</string>
     <string name="crossfade_enabled">सक्रिय (%1$ds)</string>
@@ -439,7 +418,7 @@
     <string name="use_anonymous">अनाम नाम से योगदान करें</string>
     <string name="contributor_name">योगदानकर्ता नाम</string>
     <string name="anonymous">अनाम</string>
-    <string name="simpmusic_lyrics">गीत SimpMusic Lyrics द्वारा प्रदान किए गए</string>
+    <string name="simpmusic_lyrics">गीत Earix Lyrics द्वारा प्रदान किए गए</string>
     <string name="lyrics_provider_simpmusic">गीत के बोल सिम्पम्यूज़िक लिरिक्स द्वारा प्रदान किए गए</string>
     <string name="backup_in_progress">बैकप चल रहा है</string>
     <string name="restore_in_progress">पुनर्स्थापना प्रगति पर है</string>
@@ -448,7 +427,6 @@
     <string name="no_playlist_found">कोई लोकल प्लेलिस्ट नहीं मिली, कृपया पहले एक बनाएं</string>
     <string name="list_all_cookies_of_this_page">इस पृष्ठ की सभी कुकीज़ सूचीबद्ध करें</string>
     <string name="copied_to_clipboard">क्लिपबोर्ड पर कॉपी किया गया</string>
-    <string name="update_channel">चैनल अपडेट करें</string>
     <string name="enable_liquid_glass_effect">लिक्विड ग्लास सक्षम करें (बीटा)</string>
     <string name="your_library">आपकी लाइब्रेरी</string>
     <string name="play_explicit_content">आपत्तिजनक कंटेंट चलाएं</string>
@@ -458,5 +436,4 @@
     <string name="no_mixes_found">कोई मिक्स नहीं मिला</string>
     <string name="quit_app">ऐप बंद करें</string>
     <string name="your_320kbps_url_description">अपटाइम जाँचकर्ता द्वारा किसी कार्यरत यूआरएल को अपने आप चुनने के लिए इसे खाली छोड़ें।</string>
-    <!-- Listen Together -->
 </resources>
