@@ -8,6 +8,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -20,11 +22,25 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: Decode Keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > androidApp/earix-release.jks
+          ls -la androidApp/earix-release.jks
+
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Build Debug APK
-        run: ./gradlew :androidApp:assembleDebug --no-daemon
+      - name: Build Signed APK
+        run: |
+          ./gradlew :androidApp:assembleDebug --no-daemon \
+            -PEARIX_KEYSTORE_PATH="earix-release.jks" \
+            -PEARIX_KEYSTORE_PASSWORD="${{ secrets.KEYSTORE_PASSWORD }}" \
+            -PEARIX_KEY_ALIAS="${{ secrets.KEY_ALIAS }}" \
+            -PEARIX_KEY_PASSWORD="${{ secrets.KEY_PASSWORD }}"
+
+      - name: Clean up keystore
+        if: always()
+        run: rm -f androidApp/earix-release.jks
 
       - name: Upload APK to Release
         uses: softprops/action-gh-release@v2

@@ -80,10 +80,10 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = file("../keystore/earix-release.jks")
-            storePassword = (project.findProperty("EARIX_KEYSTORE_PASSWORD") as String?) ?: ""
-            keyAlias = "earix"
-            keyPassword = (project.findProperty("EARIX_KEYSTORE_PASSWORD") as String?) ?: ""
+            storeFile = file(project.findProperty("EARIX_KEYSTORE_PATH") as String? ?: "../keystore/earix-release.jks")
+            storePassword = project.findProperty("EARIX_KEYSTORE_PASSWORD") as String? ?: ""
+            keyAlias = project.findProperty("EARIX_KEY_ALIAS") as String? ?: "earix"
+            keyPassword = project.findProperty("EARIX_KEY_PASSWORD") as String? ?: ""
         }
     }
 
