@@ -19,6 +19,8 @@ crowdin.yml
 .kotlin/
 .idea
 /simpmusic.jks
+# Release keystore (contains private key — never commit)
+/keystore/
 /ffmpeg-kit/build/
 
 #dev files

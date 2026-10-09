@@ -78,24 +78,22 @@ android {
         }
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("../keystore/earix-release.jks")
+            storePassword = (project.findProperty("EARIX_KEYSTORE_PASSWORD") as String?) ?: ""
+            keyAlias = "earix"
+            keyPassword = (project.findProperty("EARIX_KEYSTORE_PASSWORD") as String?) ?: ""
+        }
+    }
+
     buildTypes {
         release {
-            isMinifyEnabled = true
-            isShrinkResources = true
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro",
-            )
-            splits {
-                abi {
-                    isEnable = true
-                    reset()
-                    isUniversalApk = true
-                    include(*abis)
-                }
-            }
+            signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = false
         }
         debug {
+            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = false
             applicationIdSuffix = ".dev"
             versionNameSuffix = "-dev"
