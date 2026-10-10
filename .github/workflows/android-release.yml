@@ -38,6 +38,9 @@ jobs:
             -PEARIX_KEY_ALIAS="${{ secrets.KEY_ALIAS }}" \
             -PEARIX_KEY_PASSWORD="${{ secrets.KEY_PASSWORD }}"
 
+      - name: List APK files
+        run: ls -la androidApp/build/outputs/apk/debug/
+
       - name: Clean up keystore
         if: always()
         run: rm -f androidApp/earix-release.jks
@@ -46,6 +49,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.event_name == 'release'
         with:
-          files: androidApp/build/outputs/apk/debug/androidApp-universal-debug.apk
+          files: androidApp/build/outputs/apk/debug/androidApp-debug.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
