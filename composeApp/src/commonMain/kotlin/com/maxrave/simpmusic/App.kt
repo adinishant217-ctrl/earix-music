@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
@@ -478,7 +479,9 @@ fun App(
                         enter = fadeIn() + slideInHorizontally(),
                         exit = fadeOut(),
                     ) {
-                        Column {
+                        // imePadding: lifts the mini player + bottom nav above the IME
+                        // (e.g. Search screen) and returns them when it closes.
+                        Column(modifier = Modifier.imePadding()) {
                             AnimatedVisibility(
                                 isShowMiniPlayer && isLiquidGlassEnabled == DataStoreManager.FALSE,
                                 enter = fadeIn() + slideInHorizontally(),
@@ -491,7 +494,7 @@ fun App(
                                         .padding(
                                             horizontal = 12.dp,
                                         ).padding(
-                                            bottom = 4.dp,
+                                            bottom = 8.dp,
                                         ),
                                     backdrop = backdrop,
                                     onClick = {

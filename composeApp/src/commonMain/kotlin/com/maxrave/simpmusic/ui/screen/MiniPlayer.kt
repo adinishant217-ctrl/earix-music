@@ -25,6 +25,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.MarqueeAnimationMode
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -323,8 +324,10 @@ fun MiniPlayer(
         // One shape for both the Card and the clip below. They must not diverge: the clip wraps
         // the Card's own background draw, so the larger radius wins and silently becomes the
         // visible one.
+        // Floating card: 16dp corners + 1dp purple border (rgba 168,85,247,0.3), matching
+        // the clip below so the ring hugs the same outline. Glass pill path untouched.
         val miniPlayerShape =
-            if (isLiquidGlassEnabled == DataStoreManager.TRUE) CircleShape else RoundedCornerShape(12.dp)
+            if (isLiquidGlassEnabled == DataStoreManager.TRUE) CircleShape else RoundedCornerShape(16.dp)
         Card(
             shape = miniPlayerShape,
             colors =
@@ -343,6 +346,7 @@ fun MiniPlayer(
                     ).then(
                         Modifier
                             .clip(miniPlayerShape)
+                            .border(1.dp, Color(0x4DA855F7), miniPlayerShape)
                             .offset { IntOffset(0, offsetY.value.roundToInt()) }
                             .clickable(
                                 onClick = onClick,
