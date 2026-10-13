@@ -87,6 +87,7 @@ import com.maxrave.simpmusic.ui.navigation.destination.library.MixForYouDestinat
 import com.maxrave.simpmusic.ui.navigation.destination.list.AlbumDestination
 import com.maxrave.simpmusic.ui.navigation.destination.list.ArtistDestination
 import com.maxrave.simpmusic.ui.navigation.destination.list.PlaylistDestination
+import com.maxrave.simpmusic.ui.navigation.destination.list.SyncLyricsDestination
 import com.maxrave.simpmusic.ui.navigation.destination.player.FullscreenDestination
 import com.maxrave.simpmusic.ui.navigation.graph.AppNavigationGraph
 import com.maxrave.simpmusic.ui.screen.MiniPlayer
@@ -474,8 +475,16 @@ fun App(
                     if (isDesktopShell) desktopWindow else Color.Transparent,
             bottomBar = {
                 if (!isTablet) {
+                    // Sync Lyrics is a full-screen flow: the global bottom bar (nav +
+                    // mini player) would cover its action buttons, so it stays hidden
+                    // on that route. Nothing toggles state — navigating back restores
+                    // the bar automatically since isNavBarVisible is untouched.
+                    val onSyncLyricsScreen =
+                        navBackStackEntry?.destination?.hierarchy?.any {
+                            it.hasRoute(SyncLyricsDestination::class)
+                        } == true
                     AnimatedVisibility(
-                        isNavBarVisible,
+                        isNavBarVisible && !onSyncLyricsScreen,
                         enter = fadeIn() + slideInHorizontally(),
                         exit = fadeOut(),
                     ) {

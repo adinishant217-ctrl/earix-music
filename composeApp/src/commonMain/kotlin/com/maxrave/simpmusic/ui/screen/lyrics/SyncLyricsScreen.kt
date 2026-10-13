@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -124,7 +126,14 @@ fun SyncLyricsScreen(
                 .fillMaxSize()
                 .background(Color(0x8C0D0618)),
         )
-        Column(modifier = Modifier.fillMaxSize()) {
+        // System bars + IME: buttons sit above the nav bar and rise with the keyboard.
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .navigationBarsPadding()
+                    .imePadding(),
+        ) {
             SyncTopBar(
                 title =
                     if (state.syncedLines.isNotEmpty() && state.currentIndex >= state.lines.size &&

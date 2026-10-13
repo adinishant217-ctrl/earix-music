@@ -1,15 +1,16 @@
 package org.simpmusic.lyrics.publish
 
 import com.maxrave.ktorext.getEngine
+import com.maxrave.logger.Logger
 import io.ktor.client.HttpClient
-import io.ktor.client.call.body
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
@@ -19,11 +20,13 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.simpmusic.lyrics.crypto.sha256Hex
 
+private const val TAG = "LRCLIBPublisher"
 private const val CHALLENGE_URL = "https://lrclib.net/api/request-challenge"
 private const val PUBLISH_URL = "https://lrclib.net/api/publish"
+private const val USER_AGENT = "Earix/1.0.8 (https://github.com/adinishant217-ctrl/earix-music)"
 
 /** Upper bound for the proof-of-work nonce search. */
-private const val MAX_NONCE = 1_000_000
+private const val MAX_NONCE = 10_000_000
 
 /** Outcome of a publish attempt. */
 sealed class PublishResult {
@@ -98,14 +101,32 @@ object LRCLIBPublisher {
     suspend fun getPublishTokenDetailed(): TokenResult =
         withContext(Dispatchers.IO) {
             try {
-                val challenge: ChallengeResponse = client.get(CHALLENGE_URL).body()
+                Logger.d(TAG, "POST $CHALLENGE_URL")
+                val raw: HttpResponse =
+                    client.post(CHALLENGE_URL) {
+                        contentType(ContentType.Application.Json)
+                        header(HttpHeaders.UserAgent, USER_AGENT)
+                    }
+                val rawBody = raw.bodyAsText()
+                Logger.d(TAG, "challenge status=${raw.status.value} body=${rawBody.take(500)}")
+                if (raw.status.value != 200) return@withContext TokenResult.NetworkError
+                val challenge: ChallengeResponse =
+                    try {
+                        Json.decodeFromString(rawBody)
+                    } catch (e: Exception) {
+                        Logger.w(TAG, "challenge parse failed: ${e.message}")
+                        return@withContext TokenResult.NetworkError
+                    }
+                Logger.d(TAG, "prefix=${challenge.prefix} target=${challenge.target}")
                 if (challenge.prefix.isBlank() || challenge.target.isBlank()) {
                     return@withContext TokenResult.NetworkError
                 }
                 val nonce = solvePow(challenge.prefix, challenge.target)
                     ?: return@withContext TokenResult.PowUnsolved
+                Logger.d(TAG, "PoW solved nonce=$nonce hash=${sha256Hex(challenge.prefix + nonce).take(16)}...")
                 TokenResult.Ok("${challenge.prefix}:$nonce")
             } catch (e: Exception) {
+                Logger.w(TAG, "challenge request failed: ${e.message}")
                 TokenResult.NetworkError
             }
         }
@@ -124,6 +145,7 @@ object LRCLIBPublisher {
                 val response =
                     client.post(PUBLISH_URL) {
                         header("X-Publish-Token", token)
+                        header(HttpHeaders.UserAgent, USER_AGENT)
                         contentType(ContentType.Application.Json)
                         setBody(
                             PublishRequest(
@@ -136,9 +158,20 @@ object LRCLIBPublisher {
                             ),
                         )
                     }
+                Logger.d(TAG, "publish status=${response.status.value}")
                 when (response.status) {
                     HttpStatusCode.Created -> PublishResult.Success
                     HttpStatusCode.Conflict -> PublishResult.AlreadyExists
+                    HttpStatusCode.TooManyRequests -> {
+                        val retryAfter = response.headers[HttpHeaders.RetryAfter]?.toIntOrNull()
+                        val msg =
+                            if (retryAfter != null) {
+                                "Too many requests. Try again in $retryAfter seconds."
+                            } else {
+                                "Too many requests. Try again later."
+                            }
+                        PublishResult.Error(response.status.value, msg)
+                    }
                     else -> PublishResult.Error(response.status.value, response.bodyAsText().take(300))
                 }
             } catch (e: Exception) {
