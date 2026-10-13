@@ -167,6 +167,7 @@ import com.maxrave.simpmusic.ui.icon.Tune
 import com.maxrave.simpmusic.ui.icon.Update
 import com.maxrave.simpmusic.ui.navigation.destination.list.AlbumDestination
 import com.maxrave.simpmusic.ui.navigation.destination.list.ArtistDestination
+import com.maxrave.simpmusic.ui.navigation.destination.list.SyncLyricsDestination
 import com.maxrave.simpmusic.ui.theme.seed
 import com.maxrave.simpmusic.ui.theme.typo
 import com.maxrave.simpmusic.viewModel.NowPlayingBottomSheetUIEvent
@@ -197,6 +198,7 @@ import simpmusic.composeapp.generated.resources.bitrate
 import simpmusic.composeapp.generated.resources.bpm
 import simpmusic.composeapp.generated.resources.can_not_be_empty
 import simpmusic.composeapp.generated.resources.cancel
+import simpmusic.composeapp.generated.resources.contribute_lyrics
 import simpmusic.composeapp.generated.resources.crop_cover
 import simpmusic.composeapp.generated.resources.codec
 import simpmusic.composeapp.generated.resources.copied_to_clipboard
@@ -1926,6 +1928,22 @@ fun NowPlayingBottomSheet(
                         text = Res.string.share,
                     ) {
                         viewModel.onUIEvent(NowPlayingBottomSheetUIEvent.Share)
+                    }
+                    ActionButton(
+                        icon = SimpIcons.Edit,
+                        text = Res.string.contribute_lyrics,
+                    ) {
+                        val song = uiState.songUIState
+                        hideModalBottomSheet()
+                        onNavigateToOtherScreen()
+                        navController.navigate(
+                            SyncLyricsDestination(
+                                videoId = song.videoId,
+                                title = song.title,
+                                artist = song.listArtists.joinToString { it.name },
+                                album = song.album?.name.orEmpty(),
+                            ),
+                        )
                     }
                     EndOfModalBottomSheet()
                     }

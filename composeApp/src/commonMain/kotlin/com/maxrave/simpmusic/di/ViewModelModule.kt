@@ -24,6 +24,7 @@ import com.maxrave.simpmusic.viewModel.AutoEqViewModel
 import com.maxrave.simpmusic.viewModel.SettingsViewModel
 import com.maxrave.simpmusic.viewModel.SharedViewModel
 import com.maxrave.simpmusic.viewModel.SongSelectionViewModel
+import com.maxrave.simpmusic.viewModel.SyncLyricsViewModel
 import com.maxrave.simpmusic.viewModel.WrappedViewModel
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
@@ -193,6 +194,11 @@ val viewModelModule =
                 repository = get(),
                 dataStore = get(),
                 bridge = get(),
+            )
+        }
+        viewModel {
+            SyncLyricsViewModel(
+                mediaPlayerHandler = get(),
             )
         }
 

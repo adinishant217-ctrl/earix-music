@@ -36,6 +36,9 @@ import com.maxrave.simpmusic.ui.icon.SimpIcons
 import com.maxrave.simpmusic.ui.screen.player.content.NowPlayingContentActions
 import com.maxrave.simpmusic.ui.screen.player.content.NowPlayingContentState
 import com.maxrave.simpmusic.ui.theme.typo
+import com.maxrave.simpmusic.ui.screen.lyrics.SyncLyricsEmptyState
+import com.maxrave.simpmusic.ui.screen.lyrics.SyncLyricsRetryState
+import com.maxrave.simpmusic.viewModel.LyricsFetchState
 import com.maxrave.simpmusic.viewModel.LyricsProvider
 import com.maxrave.simpmusic.viewModel.UIEvent
 import org.jetbrains.compose.resources.painterResource
@@ -91,6 +94,9 @@ fun NowPlayingLyricsPage(
     state: NowPlayingContentState,
     actions: NowPlayingContentActions,
     onBack: () -> Unit,
+    lyricsFetchState: LyricsFetchState = LyricsFetchState.IDLE,
+    onRetryLyrics: () -> Unit = {},
+    onAddLyrics: () -> Unit = {},
 ) {
     var showShareSheet by rememberSaveable { mutableStateOf(false) }
     val lyricsData = state.screenData.lyricsData
@@ -201,18 +207,25 @@ fun NowPlayingLyricsPage(
                     )
                 }
             } else {
-                Box(
-                    modifier =
-                        Modifier
-                            .weight(1f)
-                            .fillMaxWidth(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = stringResource(Res.string.unsynced),
-                        style = typo().bodyMedium,
-                        color = EarixMuted,
-                    )
+                // Null lyrics: EMPTY (provider returned zero) offers contributing,
+                // OFFLINE offers a retry. Loading/IDLE keep the quiet placeholder.
+                when (lyricsFetchState) {
+                    LyricsFetchState.EMPTY -> SyncLyricsEmptyState(onAddLyrics = onAddLyrics)
+                    LyricsFetchState.OFFLINE -> LyricsRetryState(onRetry = onRetryLyrics)
+                    else ->
+                        Box(
+                            modifier =
+                                Modifier
+                                    .weight(1f)
+                                    .fillMaxWidth(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = stringResource(Res.string.unsynced),
+                                style = typo().bodyMedium,
+                                color = EarixMuted,
+                            )
+                        }
                 }
             }
             // Purple home indicator to match the player controls.

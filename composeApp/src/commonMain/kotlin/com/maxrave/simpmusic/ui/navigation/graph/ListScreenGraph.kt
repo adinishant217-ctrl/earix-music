@@ -13,6 +13,9 @@ import com.maxrave.simpmusic.ui.navigation.destination.list.LocalPlaylistDestina
 import com.maxrave.simpmusic.ui.navigation.destination.list.MoreAlbumsDestination
 import com.maxrave.simpmusic.ui.navigation.destination.list.PlaylistDestination
 import com.maxrave.simpmusic.ui.navigation.destination.list.PodcastDestination
+import com.maxrave.simpmusic.ui.navigation.destination.list.SyncLyricsDestination
+import com.maxrave.simpmusic.ui.screen.lyrics.SyncLyricsScreen
+import com.maxrave.simpmusic.viewModel.SyncSongMetadata
 import com.maxrave.simpmusic.ui.screen.library.LocalPlaylistScreen
 import com.maxrave.simpmusic.ui.screen.other.AlbumScreen
 import com.maxrave.simpmusic.ui.screen.other.ArtistScreen
@@ -70,6 +73,21 @@ fun NavGraphBuilder.listScreenGraph(
                 playlistId = data.playlistId,
                 isYourYouTubePlaylist = data.isYourYouTubePlaylist,
                 navController = navController,
+            )
+        }
+    }
+    composable<SyncLyricsDestination> { entry ->
+        val data = entry.toRoute<SyncLyricsDestination>()
+        ForceDarkContent {
+            SyncLyricsScreen(
+                metadata =
+                    SyncSongMetadata(
+                        videoId = data.videoId,
+                        title = data.title,
+                        artist = data.artist,
+                        album = data.album,
+                    ),
+                onBack = { navController.popBackStack() },
             )
         }
     }

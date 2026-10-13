@@ -119,6 +119,8 @@ kotlin {
             api(projects.common)
             api(projects.domain)
             implementation(projects.data)
+            // Lyrics publishing (LRCLIB PoW + publish; read path untouched)
+            implementation(projects.lyricsService)
 
             // Last.fm (gated: real scrobbler for full builds, no-op stub for FOSS builds).
             // `api` rather than `implementation` so :androidApp can hand it the credentials from

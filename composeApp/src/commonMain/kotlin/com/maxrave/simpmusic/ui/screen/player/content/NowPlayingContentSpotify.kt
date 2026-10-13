@@ -110,6 +110,7 @@ import com.maxrave.simpmusic.ui.icon.Shuffle
 import com.maxrave.simpmusic.ui.icon.SimpIcons
 import com.maxrave.simpmusic.ui.icon.SkipNext
 import com.maxrave.simpmusic.ui.icon.SkipPrevious
+import com.maxrave.simpmusic.ui.navigation.destination.list.SyncLyricsDestination
 import com.maxrave.simpmusic.ui.theme.typo
 import com.maxrave.simpmusic.viewModel.NowPlayingBottomSheetUIEvent
 import com.maxrave.simpmusic.viewModel.NowPlayingBottomSheetViewModel
@@ -746,6 +747,19 @@ fun NowPlayingContentSpotify(
                 state = state,
                 actions = actions,
                 onBack = { showLyricsPage = false },
+                lyricsFetchState = sharedViewModel.lyricsFetchState.collectAsStateWithLifecycle().value,
+                onRetryLyrics = { sharedViewModel.refreshLyrics() },
+                onAddLyrics = {
+                    val track = state.artworkQueue.getOrNull(state.currentOrderIndex)
+                    navController.navigate(
+                        SyncLyricsDestination(
+                            videoId = track?.videoId.orEmpty(),
+                            title = state.screenData.nowPlayingTitle,
+                            artist = state.screenData.artistName,
+                            album = "",
+                        ),
+                    )
+                },
             )
         }
     }

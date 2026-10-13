@@ -187,6 +187,26 @@ class SharedViewModel(
     private val _getVideo: MutableStateFlow<Boolean> = MutableStateFlow(false)
     val getVideo: StateFlow<Boolean> = _getVideo
 
+    /**
+     * Lyrics fetch outcome for the current song. Drives the "Add Lyrics" (EMPTY) vs
+     * "Retry" (OFFLINE) empty states. Set at the fetch entry, on every successful
+     * [updateLyrics], on provider errors, and when the saved-lyrics fallback misses.
+     */
+    private val _lyricsFetchState = MutableStateFlow(LyricsFetchState.IDLE)
+    val lyricsFetchState: StateFlow<LyricsFetchState> = _lyricsFetchState
+
+    /** True once any provider in the current chain emitted Resource.Error. */
+    private var lyricsFetchHadError = false
+
+    /** Re-runs the lyrics fetch for the current song (retry AfTER offline). */
+    fun refreshLyrics() {
+        _lyricsFetchState.value = LyricsFetchState.LOADING
+        lyricsFetchHadError = false
+        _nowPlayingScreenData.update {
+            it.copy(lyricsData = null)
+        }
+    }
+
     private var _timeline =
         MutableStateFlow<TimeLine>(
             TimeLine(
@@ -747,6 +767,11 @@ class SharedViewModel(
                         track.videoId,
                         lyricsData,
                     )
+                } else if (_lyricsFetchState.value != LyricsFetchState.LOADED) {
+                    // Chain exhausted with nothing to show: provider errors mean
+                    // offline, a clean miss means the song genuinely has no lyrics.
+                    _lyricsFetchState.value =
+                        if (lyricsFetchHadError) LyricsFetchState.OFFLINE else LyricsFetchState.EMPTY
                 }
             }
         }
@@ -1058,6 +1083,7 @@ class SharedViewModel(
             }
             return
         }
+        _lyricsFetchState.value = LyricsFetchState.LOADED
 
         val lyrics =
             inputLyrics.copy(
@@ -1281,6 +1307,8 @@ class SharedViewModel(
         duration: Int,
     ) {
         viewModelScope.launch {
+            _lyricsFetchState.value = LyricsFetchState.LOADING
+            lyricsFetchHadError = false
             val videoId = song.videoId
             log("Get Lyrics From Format for $videoId", LogLevel.WARN)
             val artistName = song.artistName
@@ -1344,7 +1372,8 @@ class SharedViewModel(
         artist: String?,
         duration: Int,
     ) {
-        lyricsCanvasRepository.getSimpMusicLyrics(videoId).collectLatest {
+            lyricsCanvasRepository.getSimpMusicLyrics(videoId).collectLatest {
+            if (it is Resource.Error) lyricsFetchHadError = true
             Logger.w(tag, "Get SimpMusic Lyrics for $videoId: $it")
             val data = it.data
             if (it is Resource.Success && data != null) {
@@ -1389,6 +1418,7 @@ class SharedViewModel(
             .getYouTubeCaption(dataStoreManager.youtubeSubtitleLanguage.first(), videoId)
             .cancellable()
             .collect { response ->
+                if (response is Resource.Error) lyricsFetchHadError = true
                 val data = response.data
                 when (response) {
                     is Resource.Success if (data != null) -> {
@@ -1442,6 +1472,7 @@ class SharedViewModel(
                     song.title,
                     duration,
                 ).collectLatest { res ->
+                    if (res is Resource.Error) lyricsFetchHadError = true
                     val data = res.data
                     when (res) {
                         is Resource.Success if (data != null) -> {
@@ -1488,6 +1519,7 @@ class SharedViewModel(
                     song.title,
                     duration,
                 ).collectLatest { res ->
+                    if (res is Resource.Error) lyricsFetchHadError = true
                     val data = res.data
                     when (res) {
                         is Resource.Success if (data != null) -> {
@@ -1654,6 +1686,7 @@ class SharedViewModel(
         viewModelScope.launch {
             Logger.d("Check SpotifyLyrics", "SpotifyLyrics $query")
             lyricsCanvasRepository.getSpotifyLyrics(dataStoreManager, query, duration).cancellable().collect { response ->
+                if (response is Resource.Error) lyricsFetchHadError = true
                 Logger.d("Check SpotifyLyrics", response.toString())
                 val data = response.data
                 when (response) {
@@ -2047,6 +2080,15 @@ enum class LyricsProvider {
     LRCLIB,
     BETTER_LYRICS,
     AI,
+    OFFLINE,
+}
+
+/** Outcome of the lyrics fetch chain for the current song. */
+enum class LyricsFetchState {
+    IDLE,
+    LOADING,
+    LOADED,
+    EMPTY,
     OFFLINE,
 }
 

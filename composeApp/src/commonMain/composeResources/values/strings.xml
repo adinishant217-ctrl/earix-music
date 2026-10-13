@@ -805,4 +805,26 @@
     <string name="month_full_oct">October</string>
     <string name="month_full_nov">November</string>
     <string name="month_full_dec">December</string>
+    <string name="sync_lyrics">Sync Lyrics</string>
+    <string name="review">Review</string>
+    <string name="paste_lyrics_here">Paste lyrics here</string>
+    <string name="one_line_per_lyric">One line per lyric, press Enter between lines</string>
+    <string name="next">Next</string>
+    <string name="undo">Undo</string>
+    <string name="line_of">Line %1$d of %2$d</string>
+    <string name="tap_in_time">Tap in time with the music</string>
+    <string name="tap">TAP</string>
+    <string name="resync">Re-sync</string>
+    <string name="submit_to_lrclib">Submit to LRCLIB</string>
+    <string name="publishing">Publishing...</string>
+    <string name="lyrics_published">Lyrics published!</string>
+    <string name="thanks_contributing">Thanks for contributing to the community.</string>
+    <string name="done">Done</string>
+    <string name="retry">Retry</string>
+    <string name="cancel">Cancel</string>
+    <string name="contribute_lyrics">Contribute Lyrics</string>
+    <string name="add_lyrics">Add Lyrics</string>
+    <string name="no_lyrics_available">No lyrics available for this song</string>
+    <string name="already_has_lyrics">This song already has lyrics in LRCLIB</string>
+    <string name="no_connection">No connection. Check your internet and try again.</string>
 </resources>
