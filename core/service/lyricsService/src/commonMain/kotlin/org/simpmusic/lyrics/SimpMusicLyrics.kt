@@ -7,6 +7,7 @@ import com.maxrave.logger.Logger
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.ProxyConfig
 import io.ktor.client.plugins.HttpSend
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.cache.HttpCache
 import io.ktor.client.plugins.compression.ContentEncoding
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -55,6 +56,10 @@ class SimpMusicLyrics {
             }
             install(HttpCookies) {
                 storage = AcceptAllCookiesStorage()
+            }
+            install(HttpTimeout) {
+                requestTimeoutMillis = 30_000
+                connectTimeoutMillis = 15_000
             }
             install(ContentNegotiation) {
                 json(
@@ -186,6 +191,38 @@ class SimpMusicLyrics {
     ) = httpClient.get("https://lrclib.net/api/search") {
         buildDefaultHeaders()
         parameter("q", "$q_artist $q_track")
+    }
+
+    /** Fuzzy field search: track + artist only (no album/duration — those vary). */
+    suspend fun searchLrclibByFields(
+        trackName: String,
+        artistName: String,
+    ) = httpClient.get("https://lrclib.net/api/search") {
+        buildDefaultHeaders()
+        parameter("track_name", trackName)
+        parameter("artist_name", artistName)
+    }
+
+    /** Track-only fallback when artist-qualified search finds nothing. */
+    suspend fun searchLrclibTrackOnly(
+        trackName: String,
+    ) = httpClient.get("https://lrclib.net/api/search") {
+        buildDefaultHeaders()
+        parameter("track_name", trackName)
+    }
+
+    /** Exact-match fallback (requires all fields to match server-side). */
+    suspend fun getLrclibExact(
+        trackName: String,
+        artistName: String,
+        albumName: String,
+        durationSeconds: Int,
+    ) = httpClient.get("https://lrclib.net/api/get") {
+        buildDefaultHeaders()
+        parameter("track_name", trackName)
+        parameter("artist_name", artistName)
+        parameter("album_name", albumName)
+        parameter("duration", durationSeconds)
     }
 
     suspend fun searchBetterLyrics(

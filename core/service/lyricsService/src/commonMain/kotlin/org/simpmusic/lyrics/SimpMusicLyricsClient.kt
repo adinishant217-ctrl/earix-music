@@ -112,35 +112,96 @@ class SimpMusicLyricsClient {
             lyricsService.voteTranslatedLyrics(translatedLyricsId, upvote, hmacTimestamp).bodyOrThrow<TranslatedLyricsResponse>()
         }
 
+    /**
+     * Fuzzy LRCLIB fetch with client-side best-match selection.
+     *
+     * Chain: field search (track+artist) → track-only search → exact /api/get
+     * fallback. Within a result set: synced first, then smallest duration diff,
+     * then newest id; entries >30s off are rejected as different songs.
+     */
     suspend fun searchLrclibLyrics(
         q_track: String,
         q_artist: String,
         duration: Int?,
+        album: String? = null,
     ) = runCatching {
-        val rs =
-            lyricsService
-                .searchLrclibLyrics(
-                    q_track = q_track,
-                    q_artist = q_artist,
-                ).body<List<LrclibObject>>()
-        val lrclibObject: LrclibObject? =
-            if (duration != null) {
-                rs.find { abs(it.duration.toInt() - duration) <= 10 }
-            } else {
-                rs.firstOrNull()
+        Logger.d(TAG, "fetchLyrics track=$q_track artist=$q_artist")
+        val fromFields = fetchLrclibList { lyricsService.searchLrclibByFields(q_track, q_artist) }
+        val picked = pickBestLrclib(fromFields, duration)
+        if (picked != null) return@runCatching toLyrics(picked)
+        Logger.d(TAG, "LRCLIB field search empty, trying track-only")
+        val trackOnly = fetchLrclibList { lyricsService.searchLrclibTrackOnly(q_track) }
+        val pickedTrackOnly = pickBestLrclib(trackOnly, duration)
+        if (pickedTrackOnly != null) return@runCatching toLyrics(pickedTrackOnly)
+        if (!album.isNullOrBlank() && duration != null) {
+            Logger.d(TAG, "LRCLIB track-only empty, trying exact /api/get")
+            val exact =
+                runCatching {
+                    lyricsService.getLrclibExact(q_track, q_artist, album, duration)
+                        .body<LrclibObject>()
+                }.getOrNull()
+            if (exact != null) return@runCatching toLyrics(exact)
+        }
+        Logger.d(TAG, "LRCLIB: no lyrics found")
+        null
+    }
+
+    private suspend fun fetchLrclibList(
+        call: suspend () -> HttpResponse,
+    ): List<LrclibObject> =
+        try {
+            call().body()
+        } catch (e: Exception) {
+            Logger.w(TAG, "LRCLIB request failed: ${e.message}")
+            throw e
+        }
+
+    private fun pickBestLrclib(
+        results: List<LrclibObject>,
+        duration: Int?,
+    ): LrclibObject? {
+        val songDur = duration ?: 0
+        Logger.d(TAG, "LRCLIB: search returned ${results.size} results")
+        if (results.isEmpty()) return null
+        data class Scored(val obj: LrclibObject, val hasSync: Boolean, val diff: Int)
+        val scored =
+            results.map { r ->
+                val hasSync = !r.syncedLyrics.isNullOrEmpty()
+                val diff =
+                    if (r.duration <= 0f || songDur <= 0) {
+                        9999
+                    } else {
+                        abs(r.duration.toInt() - songDur)
+                    }
+                Scored(r, hasSync, diff)
             }
-        if (lrclibObject != null) {
-            val syncedLyrics = lrclibObject.syncedLyrics
-            val plainLyrics = lrclibObject.plainLyrics
-            if (!syncedLyrics.isNullOrEmpty()) {
-                parseSyncedLyrics(syncedLyrics)
-            } else if (!plainLyrics.isNullOrEmpty()) {
-                parseUnsyncedLyrics(plainLyrics)
-            } else {
-                null
-            }
+        Logger.d(TAG, "LRCLIB: ${scored.count { it.hasSync }} with synced, ${scored.count { !it.hasSync }} without")
+        Logger.d(TAG, "LRCLIB: song duration=${songDur}s; top picks: " + scored.take(3).joinToString {
+            "[id${it.obj.id} dur${it.obj.duration.toInt()} hasSync${it.hasSync} diff${it.diff}]"
+        })
+        val eligible = scored.filter { it.diff <= 30 }
+        val best =
+            eligible.sortedWith(
+                compareByDescending<Scored> { it.hasSync }
+                    .thenBy { it.diff }
+                    .thenByDescending { it.obj.id },
+            ).firstOrNull() ?: return null
+        Logger.d(TAG, "LRCLIB: choosing id=${best.obj.id} dur=${best.obj.duration.toInt()} hasSync=${best.hasSync} diff=${best.diff}")
+        return best.obj
+    }
+
+    private fun toLyrics(obj: LrclibObject): Lyrics? {
+        val syncedLyrics = obj.syncedLyrics
+        val plainLyrics = obj.plainLyrics
+        Logger.d(TAG, "Parsed: synced=${syncedLyrics?.length ?: 0} plain=${plainLyrics?.length ?: 0}")
+        return if (!syncedLyrics.isNullOrEmpty()) {
+            parseSyncedLyrics(syncedLyrics.trim())
+        } else if (!plainLyrics.isNullOrEmpty()) {
+            parseUnsyncedLyrics(plainLyrics)
         } else {
             null
+        }.also {
+            Logger.d(TAG, "Returning lyrics to caller: ${if (it == null) "null" else "ok"}")
         }
     }
 

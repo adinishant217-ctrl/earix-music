@@ -15,6 +15,9 @@ interface LyricsCanvasRepository {
 
     suspend fun insertLyrics(lyricsEntity: LyricsEntity)
 
+    /** Clears every cached lyric (cache-version bump). Translated lyrics are kept. */
+    suspend fun clearCachedLyrics()
+
     suspend fun insertTranslatedLyrics(translatedLyrics: TranslatedLyricsEntity)
 
     fun getSavedTranslatedLyrics(
@@ -64,6 +67,7 @@ interface LyricsCanvasRepository {
         sartist: String,
         strack: String,
         duration: Int?,
+        album: String? = null,
     ): Flow<Resource<Lyrics>>
 
     fun getBetterLyrics(

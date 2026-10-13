@@ -257,6 +257,13 @@ class SharedViewModel(
                     VersionManager.getVersionName(),
                 )
             }
+            // Lyrics cache v2: stale "plain only" entries from the pre-search era are
+            // dropped once so every song refetches through the best-match chain.
+            if (dataStoreManager.getString(LYRICS_CACHE_VERSION_KEY).firstOrNull() != LYRICS_CACHE_VERSION) {
+                log("Clearing lyrics cache (v$LYRICS_CACHE_VERSION)")
+                runCatching { lyricsCanvasRepository.clearCachedLyrics() }
+                runCatching { dataStoreManager.putString(LYRICS_CACHE_VERSION_KEY, LYRICS_CACHE_VERSION) }
+            }
             dataStoreManager.openApp()
             val timeLineJob =
                 launch {
@@ -1471,6 +1478,7 @@ class SharedViewModel(
                     artist,
                     song.title,
                     duration,
+                    song.albumName,
                 ).collectLatest { res ->
                     if (res is Resource.Error) lyricsFetchHadError = true
                     val data = res.data
@@ -2091,6 +2099,10 @@ enum class LyricsFetchState {
     EMPTY,
     OFFLINE,
 }
+
+/** Lyrics cache generation: bump to force a full refetch of cached lyrics. */
+private const val LYRICS_CACHE_VERSION = "2"
+private const val LYRICS_CACHE_VERSION_KEY = "lyrics_cache_version"
 
 data class NowPlayingScreenData(
     val playlistName: String,

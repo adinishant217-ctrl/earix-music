@@ -70,6 +70,11 @@ internal class LyricsCanvasRepositoryImpl(
             localDataSource.insertLyrics(lyricsEntity)
         }
 
+    override suspend fun clearCachedLyrics() =
+        withContext(Dispatchers.IO) {
+            localDataSource.deleteAllLyrics()
+        }
+
     override suspend fun insertTranslatedLyrics(translatedLyrics: TranslatedLyricsEntity) =
         withContext(Dispatchers.IO) {
             localDataSource.insertTranslatedLyrics(translatedLyrics)
@@ -514,6 +519,7 @@ internal class LyricsCanvasRepositoryImpl(
         sartist: String,
         strack: String,
         duration: Int?,
+        album: String?,
     ): Flow<Resource<Lyrics>> =
         flow {
             Logger.w("Lyrics", "getLrclibLyricsData: $sartist $strack $duration")
@@ -540,7 +546,7 @@ internal class LyricsCanvasRepositoryImpl(
                     .replace(Regex("([()])"), "")
                     .replace(".", " ")
             simpMusicLyrics
-                .searchLrclibLyrics(qtrack, qartist, duration)
+                .searchLrclibLyrics(qtrack, qartist, duration, album)
                 .onSuccess {
                     it?.let { emit(Resource.Success<Lyrics>(it.toLyrics())) }
                 }.onFailure {
