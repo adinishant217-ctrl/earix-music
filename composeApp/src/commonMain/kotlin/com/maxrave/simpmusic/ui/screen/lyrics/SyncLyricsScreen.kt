@@ -52,17 +52,21 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.maxrave.simpmusic.expect.ui.rememberBackdrop
 import com.maxrave.simpmusic.ui.icon.SimpIcons
 import com.maxrave.simpmusic.ui.icon.ArrowBackIosNew
 import com.maxrave.simpmusic.ui.icon.CheckCircle
 import com.maxrave.simpmusic.ui.icon.Error
 import com.maxrave.simpmusic.ui.icon.LibraryMusic
+import com.maxrave.simpmusic.ui.screen.MiniPlayer
 import com.maxrave.simpmusic.ui.theme.typo
+import com.maxrave.simpmusic.viewModel.SharedViewModel
 import com.maxrave.simpmusic.viewModel.SyncLyricsViewModel
 import com.maxrave.simpmusic.viewModel.SyncSongMetadata
 import com.maxrave.simpmusic.viewModel.SyncedLine
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import simpmusic.composeapp.generated.resources.Res
 import simpmusic.composeapp.generated.resources.add_lyrics
@@ -127,6 +131,8 @@ fun SyncLyricsScreen(
                 .background(Color(0x8C0D0618)),
         )
         // System bars + IME: buttons sit above the nav bar and rise with the keyboard.
+        // Content takes its own weighted space; the mini player is pinned at the bottom
+        // in every state so nothing overlaps and playback stays controllable.
         Column(
             modifier =
                 Modifier
@@ -134,53 +140,56 @@ fun SyncLyricsScreen(
                     .navigationBarsPadding()
                     .imePadding(),
         ) {
-            SyncTopBar(
-                title =
-                    if (state.syncedLines.isNotEmpty() && state.currentIndex >= state.lines.size &&
-                        state.publishResult == null && !state.isPublishing
-                    ) {
-                        stringResource(Res.string.review)
-                    } else {
-                        stringResource(Res.string.sync_lyrics)
-                    },
-                showUndo = state.lines.isNotEmpty() && state.currentIndex < state.lines.size,
-                onBack = onBack,
-                onUndo = { vm.undoLastTap() },
-            )
-            SongInfoCard(title = metadata.title, artist = metadata.artist)
-            when {
-                state.isPublishing -> PublishingState()
-                state.publishResult != null -> SuccessState(onDone = onBack)
-                state.error != null -> ErrorState(
-                    message =
-                        if (state.error == SyncLyricsViewModel.ALREADY_EXISTS) {
-                            stringResource(Res.string.already_has_lyrics)
+            Column(modifier = Modifier.weight(1f)) {
+                SyncTopBar(
+                    title =
+                        if (state.syncedLines.isNotEmpty() && state.currentIndex >= state.lines.size &&
+                            state.publishResult == null && !state.isPublishing
+                        ) {
+                            stringResource(Res.string.review)
                         } else {
-                            state.error ?: ""
+                            stringResource(Res.string.sync_lyrics)
                         },
-                    onRetry = { vm.clearResult() },
-                    onCancel = onBack,
+                    showUndo = state.lines.isNotEmpty() && state.currentIndex < state.lines.size,
+                    onBack = onBack,
+                    onUndo = { vm.undoLastTap() },
                 )
+                SongInfoCard(title = metadata.title, artist = metadata.artist)
+                when {
+                    state.isPublishing -> PublishingState(powText = state.powProgressText)
+                    state.publishResult != null -> SuccessState(onDone = onBack)
+                    state.error != null -> ErrorState(
+                        message =
+                            if (state.error == SyncLyricsViewModel.ALREADY_EXISTS) {
+                                stringResource(Res.string.already_has_lyrics)
+                            } else {
+                                state.error ?: ""
+                            },
+                        onRetry = { vm.clearResult() },
+                        onCancel = onBack,
+                    )
 
-                state.lines.isEmpty() -> PasteState(
-                    rawLyrics = state.rawLyrics,
-                    onRawChange = { vm.setRawLyrics(it) },
-                    onNext = {},
-                )
+                    state.lines.isEmpty() -> PasteState(
+                        rawLyrics = state.rawLyrics,
+                        onRawChange = { vm.setRawLyrics(it) },
+                        onNext = {},
+                    )
 
-                state.currentIndex < state.lines.size -> SyncingState(
-                    lines = state.lines,
-                    currentIndex = state.currentIndex,
-                    positionMs = positionMs,
-                    onTap = { vm.tapAtPosition(positionMs) },
-                )
+                    state.currentIndex < state.lines.size -> SyncingState(
+                        lines = state.lines,
+                        currentIndex = state.currentIndex,
+                        positionMs = positionMs,
+                        onTap = { vm.tapAtPosition(positionMs) },
+                    )
 
-                else -> ReviewState(
-                    synced = state.syncedLines,
-                    onResync = { vm.resync() },
-                    onSubmit = { vm.submit(metadata) },
-                )
+                    else -> ReviewState(
+                        synced = state.syncedLines,
+                        onResync = { vm.resync() },
+                        onSubmit = { vm.submit(metadata) },
+                    )
+                }
             }
+            SyncMiniPlayer(onBack = onBack)
         }
     }
 }
@@ -386,6 +395,7 @@ private fun SyncingState(
             style = typo().labelSmall,
             color = EarixMuted,
         )
+        Spacer(modifier = Modifier.weight(1f))
     }
 }
 
@@ -450,7 +460,7 @@ private fun ReviewState(
 }
 
 @Composable
-private fun PublishingState() {
+private fun PublishingState(powText: String?) {
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Center,
@@ -459,7 +469,37 @@ private fun PublishingState() {
         CircularProgressIndicator(color = EarixPurple)
         Spacer(modifier = Modifier.height(12.dp))
         Text(text = stringResource(Res.string.publishing), style = typo().bodyMedium, color = Color.White)
+        if (powText != null) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(text = powText, style = typo().labelSmall, color = EarixMuted)
+        }
     }
+}
+
+/**
+ * The shared MiniPlayer, pinned at the bottom in every sync state. Same composable
+ * as Home/Library/Search (play/pause, prev/next, artwork). Tap returns to the
+ * player underneath (the sync screen opened from it); close mirrors the bottom
+ * bar behaviour (stops playback).
+ */
+@Composable
+private fun SyncMiniPlayer(onBack: () -> Unit) {
+    val backdrop = rememberBackdrop(Color.Black)
+    val sharedVm: SharedViewModel = koinInject()
+    MiniPlayer(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .padding(horizontal = 12.dp),
+        backdrop = backdrop,
+        sharedViewModel = sharedVm,
+        onClose = {
+            sharedVm.stopPlayer()
+            sharedVm.isServiceRunning = false
+        },
+        onClick = onBack,
+    )
 }
 
 @Composable

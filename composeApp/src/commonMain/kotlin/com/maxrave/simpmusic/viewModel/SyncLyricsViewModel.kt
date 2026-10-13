@@ -36,6 +36,7 @@ data class SyncLyricsState(
     val syncedLines: List<SyncedLine> = emptyList(),
     val currentIndex: Int = 0,
     val isPublishing: Boolean = false,
+    val powProgressText: String? = null,
     val publishResult: PublishResult? = null,
     val error: String? = null,
 )
@@ -104,11 +105,17 @@ class SyncLyricsViewModel(
     fun submit(metadata: SyncSongMetadata) {
         val s = _state.value
         if (s.isPublishing || s.syncedLines.isEmpty()) return
-        _state.value = s.copy(isPublishing = true, error = null, publishResult = null)
+        _state.value = s.copy(isPublishing = true, error = null, publishResult = null, powProgressText = null)
         viewModelScope.launch {
             val outcome =
                 withContext(Dispatchers.IO) {
-                    when (val t = LRCLIBPublisher.getPublishTokenDetailed()) {
+                    when (
+                        val t =
+                            LRCLIBPublisher.getPublishTokenDetailed { attempts ->
+                                _state.value =
+                                    _state.value.copy(powProgressText = "Solving challenge... ${attempts / 1000}K of 10M")
+                            }
+                    ) {
                         is TokenResult.Ok -> {
                             val durationSeconds =
                                 when (val st = mediaPlayerHandler.simpleMediaState.value) {
@@ -138,6 +145,7 @@ class SyncLyricsViewModel(
             _state.value =
                 _state.value.copy(
                     isPublishing = false,
+                    powProgressText = null,
                     publishResult = outcome.takeUnless { it is PublishResult.Error || it is PublishResult.AlreadyExists },
                     error =
                         when (outcome) {
