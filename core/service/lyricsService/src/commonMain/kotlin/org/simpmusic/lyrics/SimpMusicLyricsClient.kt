@@ -168,26 +168,27 @@ class SimpMusicLyricsClient {
         val scored =
             results.map { r ->
                 val hasSync = !r.syncedLyrics.isNullOrEmpty()
+                val dur = r.duration?.takeIf { it > 0f }?.toInt()
                 val diff =
-                    if (r.duration <= 0f || songDur <= 0) {
+                    if (dur == null || songDur <= 0) {
                         9999
                     } else {
-                        abs(r.duration.toInt() - songDur)
+                        abs(dur - songDur)
                     }
                 Scored(r, hasSync, diff)
             }
         Logger.d(TAG, "LRCLIB: ${scored.count { it.hasSync }} with synced, ${scored.count { !it.hasSync }} without")
         Logger.d(TAG, "LRCLIB: song duration=${songDur}s; top picks: " + scored.take(3).joinToString {
-            "[id${it.obj.id} dur${it.obj.duration.toInt()} hasSync${it.hasSync} diff${it.diff}]"
+            "[id${it.obj.id} dur${it.obj.duration?.toInt()} hasSync${it.hasSync} diff${it.diff}]"
         })
         val eligible = scored.filter { it.diff <= 30 }
         val best =
             eligible.sortedWith(
                 compareByDescending<Scored> { it.hasSync }
                     .thenBy { it.diff }
-                    .thenByDescending { it.obj.id },
+                    .thenByDescending { it.obj.id ?: 0 },
             ).firstOrNull() ?: return null
-        Logger.d(TAG, "LRCLIB: choosing id=${best.obj.id} dur=${best.obj.duration.toInt()} hasSync=${best.hasSync} diff=${best.diff}")
+        Logger.d(TAG, "LRCLIB: choosing id=${best.obj.id} dur=${best.obj.duration?.toInt()} hasSync=${best.hasSync} diff=${best.diff}")
         return best.obj
     }
 
