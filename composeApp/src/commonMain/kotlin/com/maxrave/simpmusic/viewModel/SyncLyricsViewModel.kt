@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.maxrave.domain.mediaservice.handler.MediaPlayerHandler
 import com.maxrave.domain.mediaservice.handler.SimpleMediaState
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -13,7 +14,9 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.time.TimeSource
 import org.simpmusic.lyrics.publish.LRCLIBPublisher
+import org.simpmusic.lyrics.publish.MAX_NONCE
 import org.simpmusic.lyrics.publish.PublishResult
 import org.simpmusic.lyrics.publish.TokenResult
 
@@ -51,6 +54,9 @@ class SyncLyricsViewModel(
     companion object {
         /** Sentinel error value meaning LRCLIB already has lyrics (UI maps it to a message). */
         const val ALREADY_EXISTS = "ALREADY_EXISTS_IN_LRCLIB"
+
+        private fun formatMillions(attempts: Long): String =
+            "${attempts / 1_000_000}.${(attempts % 1_000_000) / 100_000}M"
     }
 
     private val _state = MutableStateFlow(SyncLyricsState())
@@ -61,6 +67,15 @@ class SyncLyricsViewModel(
         mediaPlayerHandler.simpleMediaState
             .map { s -> if (s is SimpleMediaState.Progress) s.progress else 0L }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0L)
+
+    private var submitJob: Job? = null
+
+    /** Cancels an in-flight submit (PoW + publish) and returns to Review. */
+    fun cancelSubmit() {
+        submitJob?.cancel()
+        submitJob = null
+        _state.value = _state.value.copy(isPublishing = false, powProgressText = null)
+    }
 
     fun setRawLyrics(text: String) {
         val lines = text.split("\n").map { it.trim() }.filter { it.isNotEmpty() }
@@ -106,17 +121,30 @@ class SyncLyricsViewModel(
         val s = _state.value
         if (s.isPublishing || s.syncedLines.isEmpty()) return
         _state.value = s.copy(isPublishing = true, error = null, publishResult = null, powProgressText = null)
-        viewModelScope.launch {
-            val outcome =
-                withContext(Dispatchers.IO) {
-                    when (
-                        val t =
-                            LRCLIBPublisher.getPublishTokenDetailed { attempts ->
-                                _state.value =
-                                    _state.value.copy(powProgressText = "Solving challenge... ${attempts / 1000}K of 10M")
-                            }
-                    ) {
-                        is TokenResult.Ok -> {
+        val solveStart = TimeSource.Monotonic.markNow()
+        submitJob?.cancel()
+        submitJob =
+            viewModelScope.launch {
+                val outcome =
+                    withContext(Dispatchers.IO) {
+                        when (
+                            val t =
+                                LRCLIBPublisher.getPublishTokenDetailed { attempts ->
+                                    val elapsedSec = solveStart.elapsedNow().inWholeSeconds.coerceAtLeast(1)
+                                    val rate = attempts / elapsedSec
+                                    val eta =
+                                        if (rate > 0) {
+                                            " · ~${(MAX_NONCE - attempts) / rate}s left"
+                                        } else {
+                                            ""
+                                        }
+                                    _state.value =
+                                        _state.value.copy(
+                                            powProgressText = "Solving... ${formatMillions(attempts)} / 500M$eta",
+                                        )
+                                }
+                        ) {
+                            is TokenResult.Ok -> {
                             val durationSeconds =
                                 when (val st = mediaPlayerHandler.simpleMediaState.value) {
                                     is SimpleMediaState.Ready -> (st.duration / 1000).toInt()
@@ -137,6 +165,9 @@ class SyncLyricsViewModel(
 
                         TokenResult.PowUnsolved ->
                             PublishResult.Error(-2, "Could not solve PoW challenge")
+
+                        TokenResult.TimedOut ->
+                            PublishResult.Error(-3, "PoW took too long. Please try again.")
 
                         TokenResult.NetworkError ->
                             PublishResult.Error(-1, "Could not obtain publish token. Check internet.")

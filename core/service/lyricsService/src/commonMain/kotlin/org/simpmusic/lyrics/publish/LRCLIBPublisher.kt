@@ -14,9 +14,11 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.coroutineScope
@@ -25,6 +27,7 @@ import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.TimeMark
 import kotlin.time.TimeSource
@@ -40,8 +43,11 @@ private const val CHALLENGE_URL = "https://lrclib.net/api/request-challenge"
 private const val PUBLISH_URL = "https://lrclib.net/api/publish"
 private const val USER_AGENT = "Earix/1.0.12 (https://github.com/adinishant217-ctrl/earix-music)"
 
-/** Upper bound for the proof-of-work nonce search. */
-private const val MAX_NONCE = 10_000_000L
+/** Upper bound for the proof-of-work nonce search (30x margin over ~17M avg). */
+const val MAX_NONCE = 500_000_000L
+
+/** PoW backstop: users should never wait forever. */
+private const val POW_TIMEOUT_MS = 60_000L
 
 /** Progress callback granularity (attempts) — coarse enough to avoid UI churn. */
 private const val PROGRESS_EVERY = 50_000L
@@ -97,31 +103,26 @@ private fun hexVal(c: Char): Int =
         else -> throw IllegalArgumentException("bad hex char '$c'")
     }
 
-/** Target split once: full leading bytes + optional trailing half-byte. */
-private data class ParsedTarget(
-    val bytes: ByteArray,
-    val hexLen: Int,
-    /** High-nibble value when hexLen is odd, else -1. */
-    val oddNibble: Int,
-)
-
-private fun parseTarget(target: String): ParsedTarget {
-    require(target.isNotEmpty()) { "empty target" }
-    val full = target.length / 2
-    val bytes = ByteArray(full) { i -> ((hexVal(target[i * 2]) shl 4) or hexVal(target[i * 2 + 1])).toByte() }
-    val odd = if (target.length % 2 == 1) hexVal(target.last()) else -1
-    return ParsedTarget(bytes, target.length, odd)
-}
-
-/** Byte-level prefix check — no hex string of the hash is ever built. */
-private fun matchesPrefix(hash: ByteArray, parsed: ParsedTarget): Boolean {
-    for (i in parsed.bytes.indices) {
-        if (hash[i] != parsed.bytes[i]) return false
+/**
+ * Bitcoin-style difficulty check: is `hash` (big-endian unsigned) numerically
+ * below the target?
+ *
+ * The server sends full-length (64-char) targets like
+ * `000000FF0000...0000`, where a hex-prefix match would demand an exact
+ * 256-bit collision (impossible). Integer comparison gives the intended
+ * ~2^-24 odds (~16.7M attempts).
+ *
+ * Short targets unify too: right-padding `"0000"` with `F` to 64 chars yields
+ * `0x0000FF..FF`, and `hash < that` is exactly "hex starts with 0000".
+ */
+private fun hashLessThanTarget(hash: ByteArray, targetHex: String): Boolean {
+    val padded = targetHex.padEnd(64, 'F')
+    for (i in 0 until 32) {
+        val h = hash[i].toInt() and 0xFF
+        val t = ((hexVal(padded[i * 2]) shl 4) or hexVal(padded[i * 2 + 1]))
+        if (h != t) return h < t
     }
-    if (parsed.oddNibble >= 0) {
-        if ((hash[parsed.bytes.size].toInt() ushr 4) != parsed.oddNibble) return false
-    }
-    return true
+    return false
 }
 
 /** Outcome of a publish attempt. */
@@ -160,6 +161,8 @@ sealed interface TokenResult {
     data object NetworkError : TokenResult
 
     data object PowUnsolved : TokenResult
+
+    data object TimedOut : TokenResult
 }
 
 /**
@@ -225,14 +228,23 @@ object LRCLIBPublisher {
                     return@withContext TokenResult.NetworkError
                 }
                 val solveMark = TimeSource.Monotonic.markNow()
-                val solution = solvePowFast(challenge.prefix, challenge.target, onProgress)
-                    ?: return@withContext TokenResult.PowUnsolved
+                val solution =
+                    try {
+                        withTimeout(POW_TIMEOUT_MS) {
+                            solvePowFast(challenge.prefix, challenge.target, onProgress)
+                        }
+                    } catch (e: TimeoutCancellationException) {
+                        Logger.w(TAG, "PoW timed out after ${POW_TIMEOUT_MS}ms")
+                        return@withContext TokenResult.TimedOut
+                    } ?: return@withContext TokenResult.PowUnsolved
                 val solveMs = solveMark.elapsedNow().inWholeMilliseconds.coerceAtLeast(1)
                 val rate = solution.attempts * 1000L / solveMs
                 Logger.d(TAG, "PoW solved nonce=${solution.nonce} attempts=${solution.attempts} solveMs=$solveMs rate=$rate H/s")
                 val token = "${challenge.prefix}:${solution.nonce}"
                 cachedToken = CachedToken(token, TimeSource.Monotonic.markNow())
                 TokenResult.Ok(token)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Logger.w(TAG, "challenge request failed: ${e.message}")
                 TokenResult.NetworkError
@@ -300,22 +312,19 @@ object LRCLIBPublisher {
     ): PowSolution? =
         coroutineScope {
             // Self-test the exact hot path (platform hasher): SHA256("hello").
+            val selfTestBuf = ByteArray(32)
+            powHash("hello".toByteArray(), ByteArray(0), 0, selfTestBuf)
             val selfTest =
-                powHash("hello".toByteArray(), ByteArray(0), 0).toHex() ==
+                selfTestBuf.toHex() ==
                     "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
             Logger.d(TAG, "SHA-256 self-test passed=$selfTest")
             if (!selfTest) return@coroutineScope null
-            val parsed =
-                try {
-                    parseTarget(target)
-                } catch (e: IllegalArgumentException) {
-                    Logger.w(TAG, "bad challenge target: ${e.message}")
-                    return@coroutineScope null
-                }
+            require(target.isNotEmpty() && target.all { it in '0'..'9' || it in 'a'..'f' || it in 'A'..'F' }) {
+                "bad challenge target"
+            }
             val workers = powCpuCount().coerceIn(1, 8)
             val prefixBytes = prefix.toByteArray()
             Logger.d(TAG, "PoW start workers=$workers prefix='$prefix' target='$target'")
-            Logger.d(TAG, "prefixBytes.size=${prefixBytes.size} targetBytes=${parsed.bytes.toHex()} hexLen=${parsed.hexLen}")
             val mutex = Mutex()
             var total = 0L
             suspend fun report(delta: Long) {
@@ -328,9 +337,11 @@ object LRCLIBPublisher {
                 (0 until workers).map { id ->
                     async(Dispatchers.Default) {
                         val buf = ByteArray(20)
+                        val hashBuf = ByteArray(32)
                         var nonce = id.toLong()
                         var local = 0L
                         var reported = 0L
+                        var checks = 0
                         suspend fun flush() {
                             val delta = local - reported
                             if (delta > 0) {
@@ -339,14 +350,17 @@ object LRCLIBPublisher {
                             }
                         }
                         while (nonce < MAX_NONCE) {
-                            ensureActive()
+                            if (++checks >= 1000) {
+                                ensureActive()
+                                checks = 0
+                            }
                             val len = writeLongAscii(nonce, buf)
-                            val hash = powHash(prefixBytes, buf, len)
+                            powHash(prefixBytes, buf, len, hashBuf)
                             if (nonce < 5) {
-                                val hashHex = hash.toHex()
+                                val hashHex = hashBuf.toHex()
                                 Logger.d(TAG, "attempt $nonce: input='$prefix$nonce' hash=$hashHex first4=${hashHex.take(4)} target=$target")
                             }
-                            if (matchesPrefix(hash, parsed)) {
+                            if (hashLessThanTarget(hashBuf, target)) {
                                 flush()
                                 return@async nonce
                             }
@@ -374,11 +388,17 @@ object LRCLIBPublisher {
             }
             coroutineContext[Job]?.cancelChildren()
             if (winner == null) {
-                // Exhausted: dump forensic samples so we can see prefix/target/hash shape.
-                val zeroHash = powHash(prefixBytes, ByteArray(0), 0).toHex()
-                Logger.w(TAG, "PoW exhausted prefix='$prefix' target='$target' hash(0)=$zeroHash")
+                // Exhausted: dump forensic samples using the SAME path as the loop
+                // (prefix + decimal nonce). The old dump hashed the bare prefix —
+                // that mismatch is why its hash never equaled attempt 0's.
+                val zeroBuf = ByteArray(32)
+                powHash(prefixBytes, "0".toByteArray(), 1, zeroBuf)
+                Logger.w(TAG, "PoW exhausted prefix='$prefix' target='$target' hash(prefix+\"0\")=${zeroBuf.toHex()}")
                 for (n in 0L..4L) {
-                    val sample = powHash(prefixBytes, "$n".toByteArray(), "$n".length).toHex()
+                    val ns = n.toString()
+                    val sampleBuf = ByteArray(32)
+                    powHash(prefixBytes, ns.toByteArray(), ns.length, sampleBuf)
+                    val sample = sampleBuf.toHex()
                     Logger.w(TAG, "sample nonce=$n first4=${sample.take(4)} target=$target")
                 }
             }

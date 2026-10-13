@@ -156,7 +156,10 @@ fun SyncLyricsScreen(
                 )
                 SongInfoCard(title = metadata.title, artist = metadata.artist)
                 when {
-                    state.isPublishing -> PublishingState(powText = state.powProgressText)
+                    state.isPublishing -> PublishingState(
+                        powText = state.powProgressText,
+                        onCancel = { vm.cancelSubmit() },
+                    )
                     state.publishResult != null -> SuccessState(onDone = onBack)
                     state.error != null -> ErrorState(
                         message =
@@ -460,7 +463,10 @@ private fun ReviewState(
 }
 
 @Composable
-private fun PublishingState(powText: String?) {
+private fun PublishingState(
+    powText: String?,
+    onCancel: () -> Unit,
+) {
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Center,
@@ -472,6 +478,10 @@ private fun PublishingState(powText: String?) {
         if (powText != null) {
             Spacer(modifier = Modifier.height(4.dp))
             Text(text = powText, style = typo().labelSmall, color = EarixMuted)
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        OutlinedButton(onClick = onCancel) {
+            Text(stringResource(Res.string.cancel))
         }
     }
 }
