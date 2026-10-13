@@ -211,7 +211,7 @@ fun NowPlayingLyricsPage(
                 // OFFLINE offers a retry. Loading/IDLE keep the quiet placeholder.
                 when (lyricsFetchState) {
                     LyricsFetchState.EMPTY -> SyncLyricsEmptyState(onAddLyrics = onAddLyrics)
-                    LyricsFetchState.OFFLINE -> LyricsRetryState(onRetry = onRetryLyrics)
+                    LyricsFetchState.OFFLINE -> SyncLyricsRetryState(onRetry = onRetryLyrics)
                     else ->
                         Box(
                             modifier =
