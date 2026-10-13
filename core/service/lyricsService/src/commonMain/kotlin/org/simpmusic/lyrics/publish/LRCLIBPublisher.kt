@@ -41,7 +41,7 @@ import org.simpmusic.lyrics.crypto.toHex
 private const val TAG = "LRCLIBPublisher"
 private const val CHALLENGE_URL = "https://lrclib.net/api/request-challenge"
 private const val PUBLISH_URL = "https://lrclib.net/api/publish"
-private const val USER_AGENT = "Earix/1.0.14 (https://github.com/adinishant217-ctrl/earix-music)"
+private const val USER_AGENT = "Earix/1.0.15 (https://github.com/adinishant217-ctrl/earix-music)"
 
 /** Upper bound for the proof-of-work nonce search (30x margin over ~17M avg). */
 const val MAX_NONCE = 500_000_000L
