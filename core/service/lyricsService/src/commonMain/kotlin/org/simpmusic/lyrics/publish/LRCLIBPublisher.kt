@@ -33,6 +33,7 @@ import kotlinx.serialization.json.Json
 import org.simpmusic.lyrics.crypto.powCpuCount
 import org.simpmusic.lyrics.crypto.powHash
 import org.simpmusic.lyrics.crypto.sha256Hex
+import org.simpmusic.lyrics.crypto.toHex
 
 private const val TAG = "LRCLIBPublisher"
 private const val CHALLENGE_URL = "https://lrclib.net/api/request-challenge"
@@ -298,6 +299,12 @@ object LRCLIBPublisher {
         onProgress: (Long) -> Unit = {},
     ): PowSolution? =
         coroutineScope {
+            // Self-test the exact hot path (platform hasher): SHA256("hello").
+            val selfTest =
+                powHash("hello".toByteArray(), ByteArray(0), 0).toHex() ==
+                    "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+            Logger.d(TAG, "SHA-256 self-test passed=$selfTest")
+            if (!selfTest) return@coroutineScope null
             val parsed =
                 try {
                     parseTarget(target)
@@ -307,6 +314,8 @@ object LRCLIBPublisher {
                 }
             val workers = powCpuCount().coerceIn(1, 8)
             val prefixBytes = prefix.toByteArray()
+            Logger.d(TAG, "PoW start workers=$workers prefix='$prefix' target='$target'")
+            Logger.d(TAG, "prefixBytes.size=${prefixBytes.size} targetBytes=${parsed.bytes.toHex()} hexLen=${parsed.hexLen}")
             val mutex = Mutex()
             var total = 0L
             suspend fun report(delta: Long) {
@@ -332,7 +341,12 @@ object LRCLIBPublisher {
                         while (nonce < MAX_NONCE) {
                             ensureActive()
                             val len = writeLongAscii(nonce, buf)
-                            if (matchesPrefix(powHash(prefixBytes, buf, len), parsed)) {
+                            val hash = powHash(prefixBytes, buf, len)
+                            if (nonce < 5) {
+                                val hashHex = hash.toHex()
+                                Logger.d(TAG, "attempt $nonce: input='$prefix$nonce' hash=$hashHex first4=${hashHex.take(4)} target=$target")
+                            }
+                            if (matchesPrefix(hash, parsed)) {
                                 flush()
                                 return@async nonce
                             }
@@ -359,6 +373,15 @@ object LRCLIBPublisher {
                 }
             }
             coroutineContext[Job]?.cancelChildren()
+            if (winner == null) {
+                // Exhausted: dump forensic samples so we can see prefix/target/hash shape.
+                val zeroHash = powHash(prefixBytes, ByteArray(0), 0).toHex()
+                Logger.w(TAG, "PoW exhausted prefix='$prefix' target='$target' hash(0)=$zeroHash")
+                for (n in 0L..4L) {
+                    val sample = powHash(prefixBytes, "$n".toByteArray(), "$n".length).toHex()
+                    Logger.w(TAG, "sample nonce=$n first4=${sample.take(4)} target=$target")
+                }
+            }
             winner?.let { PowSolution(it, winnerAttempts) }
         }
 
