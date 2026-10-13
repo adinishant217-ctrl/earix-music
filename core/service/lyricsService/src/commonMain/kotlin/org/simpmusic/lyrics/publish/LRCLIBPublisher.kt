@@ -25,11 +25,13 @@ import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import kotlinx.datetime.Clock
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.TimeMark
+import kotlin.time.TimeSource
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import org.simpmusic.lyrics.crypto.PowHasher
 import org.simpmusic.lyrics.crypto.powCpuCount
+import org.simpmusic.lyrics.crypto.powHash
 import org.simpmusic.lyrics.crypto.sha256Hex
 
 private const val TAG = "LRCLIBPublisher"
@@ -44,7 +46,7 @@ private const val MAX_NONCE = 10_000_000L
 private const val PROGRESS_EVERY = 50_000L
 
 /** Solved-token reuse window (LRCLIB tokens live ~4 minutes). */
-private const val TOKEN_TTL_MS = 4 * 60 * 1000L
+private val TOKEN_TTL = 240_000L.milliseconds
 
 /** Solved nonce plus the attempts it took (for hash-rate logging). */
 data class PowSolution(
@@ -54,10 +56,10 @@ data class PowSolution(
 
 private data class CachedToken(
     val token: String,
-    val expiresAtMs: Long,
+    val issuedAt: TimeMark,
 )
 
-private fun nowMs(): Long = Clock.System.now().toEpochMilliseconds()
+private fun CachedToken.isAlive(): Boolean = issuedAt.elapsedNow() < TOKEN_TTL
 
 /** Solved-token reuse (LRCLIB tokens live ~4 minutes). Cleared on any failure. */
 private var cachedToken: CachedToken? = null
@@ -194,19 +196,19 @@ object LRCLIBPublisher {
     suspend fun getPublishTokenDetailed(onProgress: (Long) -> Unit = {}): TokenResult =
         withContext(Dispatchers.IO) {
             try {
-                cachedToken?.takeIf { nowMs() < it.expiresAtMs }?.let {
+                cachedToken?.takeIf { it.isAlive() }?.let {
                     Logger.d(TAG, "reusing cached token")
                     return@withContext TokenResult.Ok(it.token)
                 }
                 cachedToken = null
                 Logger.d(TAG, "POST $CHALLENGE_URL")
-                val fetchStart = nowMs()
+                val fetchMark = TimeSource.Monotonic.markNow()
                 val raw: HttpResponse =
                     client.post(CHALLENGE_URL) {
                         contentType(ContentType.Application.Json)
                         header(HttpHeaders.UserAgent, USER_AGENT)
                     }
-                val fetchMs = nowMs() - fetchStart
+                val fetchMs = fetchMark.elapsedNow().inWholeMilliseconds
                 val rawBody = raw.bodyAsText()
                 Logger.d(TAG, "challenge status=${raw.status.value} fetchMs=$fetchMs body=${rawBody.take(500)}")
                 if (raw.status.value != 200) return@withContext TokenResult.NetworkError
@@ -221,14 +223,14 @@ object LRCLIBPublisher {
                 if (challenge.prefix.isBlank() || challenge.target.isBlank()) {
                     return@withContext TokenResult.NetworkError
                 }
-                val solveStart = nowMs()
+                val solveMark = TimeSource.Monotonic.markNow()
                 val solution = solvePowFast(challenge.prefix, challenge.target, onProgress)
                     ?: return@withContext TokenResult.PowUnsolved
-                val solveMs = (nowMs() - solveStart).coerceAtLeast(1)
+                val solveMs = solveMark.elapsedNow().inWholeMilliseconds.coerceAtLeast(1)
                 val rate = solution.attempts * 1000L / solveMs
                 Logger.d(TAG, "PoW solved nonce=${solution.nonce} attempts=${solution.attempts} solveMs=$solveMs rate=$rate H/s")
                 val token = "${challenge.prefix}:${solution.nonce}"
-                cachedToken = CachedToken(token, nowMs() + TOKEN_TTL_MS)
+                cachedToken = CachedToken(token, TimeSource.Monotonic.markNow())
                 TokenResult.Ok(token)
             } catch (e: Exception) {
                 Logger.w(TAG, "challenge request failed: ${e.message}")
@@ -264,7 +266,7 @@ object LRCLIBPublisher {
                         )
                     }
                 Logger.d(TAG, "publish status=${response.status.value}")
-                val publishStart = nowMs()
+                val publishMark = TimeSource.Monotonic.markNow()
                 val result =
                     when (response.status) {
                         HttpStatusCode.Created -> PublishResult.Success
@@ -281,7 +283,7 @@ object LRCLIBPublisher {
                         }
                         else -> PublishResult.Error(response.status.value, response.bodyAsText().take(300))
                     }
-                Logger.d(TAG, "publishMs=${nowMs() - publishStart}")
+                Logger.d(TAG, "publishMs=${publishMark.elapsedNow().inWholeMilliseconds}")
                 if (result is PublishResult.Error) cachedToken = null
                 result
             } catch (e: Exception) {
@@ -316,7 +318,6 @@ object LRCLIBPublisher {
             val jobs =
                 (0 until workers).map { id ->
                     async(Dispatchers.Default) {
-                        val hasher = PowHasher()
                         val buf = ByteArray(20)
                         var nonce = id.toLong()
                         var local = 0L
@@ -331,7 +332,7 @@ object LRCLIBPublisher {
                         while (nonce < MAX_NONCE) {
                             ensureActive()
                             val len = writeLongAscii(nonce, buf)
-                            if (matchesPrefix(hasher.hash(prefixBytes, buf, len), parsed)) {
+                            if (matchesPrefix(powHash(prefixBytes, buf, len), parsed)) {
                                 flush()
                                 return@async nonce
                             }
