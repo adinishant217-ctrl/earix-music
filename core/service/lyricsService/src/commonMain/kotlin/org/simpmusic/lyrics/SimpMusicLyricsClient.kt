@@ -12,6 +12,7 @@ import org.simpmusic.lyrics.am.parseAMHlsVariants
 import org.simpmusic.lyrics.am.pickAMRendition
 import org.simpmusic.lyrics.am.AMArtistResource
 import org.simpmusic.lyrics.am.AMSearchResponse
+import org.simpmusic.lyrics.domain.Lyrics
 import org.simpmusic.lyrics.models.request.LyricsBody
 import org.simpmusic.lyrics.models.request.TranslatedLyricsBody
 import org.simpmusic.lyrics.models.response.BaseResponse
