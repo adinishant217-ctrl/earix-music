@@ -5,14 +5,19 @@ import org.simpmusic.lyrics.domain.Lyrics
 
 fun parseSyncedLyrics(data: String): Lyrics {
     val regex = Regex("\\[(\\d{2}):(\\d{2})\\.(\\d{2})\\](.+)")
-    val lines = data.lines()
+    // Strip leading/trailing blank lines (publishers often end with "\n", which would
+    // otherwise produce a final empty split). Interior lines are untouched.
+    val lines = data.trim().lines()
     val linesLyrics = ArrayList<Lyrics.LyricsX.Line>()
     lines.map { line ->
         val matchResult = regex.matchEntire(line)
         if (matchResult != null) {
             val minutes = matchResult.groupValues[1].toLong()
             val seconds = matchResult.groupValues[2].toLong()
-            val milliseconds = matchResult.groupValues[3].toLong()
+            // Group 3 is CENTIseconds (LRC [mm:ss.xx]) — ×10 for milliseconds. The rich
+            // parser already does this; the line parser previously added the raw value,
+            // shrinking every timestamp 10x and breaking sync.
+            val milliseconds = matchResult.groupValues[3].toLong() * 10
             val timeInMillis = minutes * 60_000L + seconds * 1000L + milliseconds
             // Trim, don't drop a fixed first character. Most providers leave a space after
             // "]", but LRCLIB packs the text right against it — "[00:27.12]boy, you got me"

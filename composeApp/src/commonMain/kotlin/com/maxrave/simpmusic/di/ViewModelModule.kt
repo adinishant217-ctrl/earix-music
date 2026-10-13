@@ -199,6 +199,7 @@ val viewModelModule =
         viewModel {
             SyncLyricsViewModel(
                 mediaPlayerHandler = get(),
+                lyricsRepository = get(),
             )
         }
 

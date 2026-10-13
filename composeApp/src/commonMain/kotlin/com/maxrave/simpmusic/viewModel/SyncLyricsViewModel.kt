@@ -2,8 +2,12 @@ package com.maxrave.simpmusic.viewModel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.maxrave.domain.data.model.metadata.Line
+import com.maxrave.domain.data.model.metadata.Lyrics
 import com.maxrave.domain.mediaservice.handler.MediaPlayerHandler
 import com.maxrave.domain.mediaservice.handler.SimpleMediaState
+import com.maxrave.domain.repository.LyricsCanvasRepository
+import com.maxrave.domain.utils.toLyricsEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -50,6 +54,7 @@ data class SyncLyricsState(
  */
 class SyncLyricsViewModel(
     private val mediaPlayerHandler: MediaPlayerHandler,
+    private val lyricsRepository: LyricsCanvasRepository,
 ) : ViewModel() {
     companion object {
         /** Sentinel error value meaning LRCLIB already has lyrics (UI maps it to a message). */
@@ -152,15 +157,39 @@ class SyncLyricsViewModel(
                                     else -> 0
                                 }
                             val pairs = s.syncedLines.map { it.timestampMs to it.text }
-                            LRCLIBPublisher.publishLyrics(
-                                token = t.token,
-                                trackName = metadata.title,
-                                artistName = metadata.artist,
-                                albumName = metadata.album,
-                                durationSeconds = durationSeconds,
-                                syncedLyrics = LRCLIBPublisher.buildLRC(pairs),
-                                plainLyrics = LRCLIBPublisher.buildPlainLyrics(pairs),
-                            )
+                            val result =
+                                LRCLIBPublisher.publishLyrics(
+                                    token = t.token,
+                                    trackName = metadata.title,
+                                    artistName = metadata.artist,
+                                    albumName = metadata.album,
+                                    durationSeconds = durationSeconds,
+                                    syncedLyrics = LRCLIBPublisher.buildLRC(pairs),
+                                    plainLyrics = LRCLIBPublisher.buildPlainLyrics(pairs),
+                                )
+                            if (result is PublishResult.Success) {
+                                // Persist the SYNCED version locally: next view reads cache
+                                // first (via the existing saved-lyrics fallback) — no network
+                                // round-trip, no LRCLIB index lag, survives restarts.
+                                runCatching {
+                                    lyricsRepository.insertLyrics(
+                                        Lyrics(
+                                            error = false,
+                                            lines =
+                                                s.syncedLines.map {
+                                                    Line(
+                                                        endTimeMs = "0",
+                                                        startTimeMs = it.timestampMs.toString(),
+                                                        syllables = null,
+                                                        words = it.text,
+                                                    )
+                                                },
+                                            syncType = "LINE_SYNCED",
+                                        ).toLyricsEntity(metadata.videoId),
+                                    )
+                                }
+                            }
+                            result
                         }
 
                         TokenResult.PowUnsolved ->
