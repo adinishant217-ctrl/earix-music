@@ -820,8 +820,6 @@
     <string name="lyrics_published">Lyrics published!</string>
     <string name="thanks_contributing">Thanks for contributing to the community.</string>
     <string name="done">Done</string>
-    <string name="retry">Retry</string>
-    <string name="cancel">Cancel</string>
     <string name="contribute_lyrics">Contribute Lyrics</string>
     <string name="add_lyrics">Add Lyrics</string>
     <string name="no_lyrics_available">No lyrics available for this song</string>
