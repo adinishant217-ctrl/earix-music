@@ -73,11 +73,14 @@ import com.maxrave.simpmusic.ui.component.LibraryItemState
 import com.maxrave.simpmusic.ui.component.LibraryItemType
 import com.maxrave.simpmusic.ui.component.LibraryTilingBox
 import com.maxrave.simpmusic.ui.component.ListenTogetherIconButton
+import com.maxrave.simpmusic.ui.component.RippleIconButton
 import com.maxrave.simpmusic.ui.component.selection.SelectedSongsBottomSheet
 import com.maxrave.simpmusic.ui.component.selection.SongSelectionTopAppBar
 import com.maxrave.simpmusic.ui.component.selection.rememberSongSelectionState
+import com.maxrave.simpmusic.ui.icon.History
 import com.maxrave.simpmusic.ui.icon.PeopleAlt
 import com.maxrave.simpmusic.ui.icon.SimpIcons
+import com.maxrave.simpmusic.ui.navigation.destination.home.RecentlySongsDestination
 import com.maxrave.simpmusic.ui.navigation.destination.listentogether.ListenTogetherDestination
 import com.maxrave.simpmusic.ui.theme.typo
 import com.maxrave.simpmusic.viewModel.LibraryViewModel
@@ -468,6 +471,13 @@ fun LibraryScreen(
                     containerColor = Color.Transparent,
                 ),
             actions = {
+                // History moved here from the bottom bar, where Listen Together now sits. Screen,
+                // route and data are unchanged — only this entry point is new.
+                RippleIconButton(
+                    imageVector = SimpIcons.History,
+                    tint = MaterialTheme.colorScheme.onBackground,
+                    onClick = { navController.navigate(RecentlySongsDestination) },
+                )
                 ListenTogetherIconButton {
                     navController.navigate(ListenTogetherDestination)
                 }

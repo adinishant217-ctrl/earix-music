@@ -33,7 +33,7 @@ import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.compose.currentBackStackEntryAsState
-import com.maxrave.simpmusic.ui.icon.History
+import com.maxrave.simpmusic.ui.icon.Groups
 import com.maxrave.simpmusic.ui.icon.Home
 import com.maxrave.simpmusic.ui.icon.LibraryMusic
 import com.maxrave.simpmusic.ui.icon.Notifications
@@ -43,9 +43,9 @@ import com.maxrave.simpmusic.ui.icon.SimpIcons
 import com.maxrave.simpmusic.extension.greyScale
 import com.maxrave.simpmusic.ui.navigation.destination.home.HomeDestination
 import com.maxrave.simpmusic.ui.navigation.destination.home.NotificationDestination
-import com.maxrave.simpmusic.ui.navigation.destination.home.RecentlySongsDestination
 import com.maxrave.simpmusic.ui.navigation.destination.home.SettingsDestination
 import com.maxrave.simpmusic.ui.navigation.destination.library.LibraryDestination
+import com.maxrave.simpmusic.ui.navigation.destination.listentogether.ListenTogetherDestination
 import com.maxrave.simpmusic.ui.navigation.destination.search.SearchDestination
 import com.maxrave.simpmusic.ui.theme.typo
 import org.jetbrains.compose.resources.painterResource
@@ -184,7 +184,7 @@ fun AppBottomNavigationBar(
             }
         }
 
-        // Center circles: Search, History, Notification
+        // Center circles: Search, Listen Together, Notification
         Row(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -197,10 +197,12 @@ fun AppBottomNavigationBar(
                     navigateTo(SearchDestination)
                 },
             )
+            // Replaces the old History slot. History itself is untouched and still reachable
+            // from Library's top bar.
             CircleNavButton(
-                icon = SimpIcons.History,
+                icon = SimpIcons.Groups,
                 isSelected = false,
-                onClick = { navigateTo(RecentlySongsDestination) },
+                onClick = { navigateTo(ListenTogetherDestination) },
             )
             CircleNavButton(
                 icon = SimpIcons.Notifications,
