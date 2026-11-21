@@ -112,6 +112,7 @@ import com.maxrave.simpmusic.ui.icon.PeopleAlt
 import com.maxrave.simpmusic.ui.icon.PlaylistAdd
 import com.maxrave.simpmusic.ui.icon.SimpIcons
 import com.maxrave.simpmusic.ui.navigation.destination.home.CreditDestination
+import com.maxrave.simpmusic.ui.navigation.destination.listentogether.ListenTogetherSettingsDestination
 import com.maxrave.simpmusic.ui.navigation.destination.login.LastfmLoginDestination
 import com.maxrave.simpmusic.ui.navigation.destination.login.LoginDestination
 import com.maxrave.simpmusic.ui.theme.parseThemeColorHex
@@ -149,6 +150,8 @@ import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import simpmusic.composeapp.generated.resources.Res
 import simpmusic.composeapp.generated.resources.about_us
+import simpmusic.composeapp.generated.resources.listen_together
+import simpmusic.composeapp.generated.resources.lt_settings_subtitle
 import simpmusic.composeapp.generated.resources.add_an_account
 import simpmusic.composeapp.generated.resources.anonymous
 import simpmusic.composeapp.generated.resources.app_name
@@ -1660,6 +1663,23 @@ fun SettingScreen(
                         coroutineScope.launch {
                             importLauncher.launch()
                         }
+                    },
+                )
+            }
+        }
+        item(key = "listen_together") {
+            Column {
+                Text(
+                    text = stringResource(Res.string.listen_together),
+                    style = typo().labelMedium,
+                    color = Color(0xFFA855F7),
+                    modifier = Modifier.padding(vertical = 8.dp),
+                )
+                SettingItem(
+                    title = stringResource(Res.string.listen_together),
+                    subtitle = stringResource(Res.string.lt_settings_subtitle),
+                    onClick = {
+                        navController.navigate(ListenTogetherSettingsDestination)
                     },
                 )
             }

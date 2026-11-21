@@ -4,6 +4,12 @@ on:
   release:
     types: [published]
   workflow_dispatch:
+  # Test-only trigger: the Listen Together test branch builds a downloadable debug APK on every
+  # push. Publishing stays gated on the `release` event below, so a push here can never create a
+  # GitHub release or reach users.
+  push:
+    branches:
+      - listen-together-test
 
 jobs:
   build:
@@ -16,11 +22,13 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Set up JDK 17
+      # Java 21, not 17: androidApp sets sourceCompatibility/targetCompatibility to VERSION_21 and
+      # there is no Gradle toolchain configured, so a 17 JDK cannot compile the sources.
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '17'
+          java-version: '21'
 
       - name: Decode Keystore
         run: |
@@ -40,6 +48,16 @@ jobs:
 
       - name: List APK files
         run: ls -la androidApp/build/outputs/apk/debug/
+
+      # Downloadable artifact for side-loading the test build. Deliberately separate from the
+      # release step below: this uploads to the workflow run only, never to a release.
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: earix-listen-together-debug-apk
+          path: androidApp/build/outputs/apk/debug/androidApp-debug.apk
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Clean up keystore
         if: always()

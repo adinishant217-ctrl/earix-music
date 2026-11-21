@@ -825,4 +825,45 @@
     <string name="no_lyrics_available">No lyrics available for this song</string>
     <string name="already_has_lyrics">This song already has lyrics in LRCLIB</string>
     <string name="no_connection">No connection. Check your internet and try again.</string>
+
+    <!-- Listen Together -->
+    <string name="listen_together">Listen Together</string>
+    <string name="lt_tagline">One song, one position, together.</string>
+    <string name="lt_server_hint">Metrolist-compatible rooms</string>
+    <string name="lt_not_connected">Not connected</string>
+    <string name="lt_connected">Connected</string>
+    <string name="lt_connecting">Connecting…</string>
+    <string name="lt_connect">Connect</string>
+    <string name="lt_disconnect">Disconnect</string>
+    <string name="lt_display_name">Display name</string>
+    <string name="lt_display_name_hint">The name everyone in the room sees</string>
+    <string name="lt_create_room">Create room</string>
+    <string name="lt_or_join_with_code">or join with a code</string>
+    <string name="lt_join_room">Join room</string>
+    <string name="lt_code_hint">Enter the 8-character room code</string>
+    <string name="lt_background_warning">Leaving the app or switching away for too long will disconnect you from the room.</string>
+    <string name="lt_waiting_approval">Waiting for the host</string>
+    <string name="lt_waiting_approval_desc">They need to let you in. If the code is wrong you will get an error instead.</string>
+    <string name="lt_room_code">Room code</string>
+    <string name="lt_in_room">In the room</string>
+    <string name="lt_host_badge">host</string>
+    <string name="lt_you">you</string>
+    <string name="lt_host_summary">You are the host · %1$d listening</string>
+    <string name="lt_guest_summary">%1$s is controlling playback</string>
+    <string name="lt_leave_room">Leave room</string>
+    <string name="lt_copy_code">Copy code</string>
+    <string name="lt_copied">Copied</string>
+    <string name="lt_compatible">Rooms are compatible with Metrolist clients</string>
+    <string name="lt_settings_subtitle">Server and room options</string>
+    <string name="lt_server">Server</string>
+    <string name="lt_default_server_name">Default server</string>
+    <string name="lt_default_server_location">The public Metrolist-compatible server</string>
+    <string name="lt_custom_server">Custom server</string>
+    <string name="lt_custom_server_desc">Enter your own wss:// address</string>
+    <string name="lt_save_server">Save server</string>
+    <string name="lt_as_host">When you host</string>
+    <string name="lt_auto_approve_joins">Auto-approve joins</string>
+    <string name="lt_auto_approve_joins_desc">Anyone with the code gets in without asking</string>
+    <string name="lt_auto_approve_suggestions">Auto-approve suggestions</string>
+    <string name="lt_auto_approve_suggestions_desc">Suggested tracks go straight into the queue</string>
 </resources>

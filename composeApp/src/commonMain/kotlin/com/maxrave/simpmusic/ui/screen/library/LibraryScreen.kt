@@ -72,11 +72,13 @@ import com.maxrave.simpmusic.ui.component.LibraryItem
 import com.maxrave.simpmusic.ui.component.LibraryItemState
 import com.maxrave.simpmusic.ui.component.LibraryItemType
 import com.maxrave.simpmusic.ui.component.LibraryTilingBox
+import com.maxrave.simpmusic.ui.component.ListenTogetherIconButton
 import com.maxrave.simpmusic.ui.component.selection.SelectedSongsBottomSheet
 import com.maxrave.simpmusic.ui.component.selection.SongSelectionTopAppBar
 import com.maxrave.simpmusic.ui.component.selection.rememberSongSelectionState
 import com.maxrave.simpmusic.ui.icon.PeopleAlt
 import com.maxrave.simpmusic.ui.icon.SimpIcons
+import com.maxrave.simpmusic.ui.navigation.destination.listentogether.ListenTogetherDestination
 import com.maxrave.simpmusic.ui.theme.typo
 import com.maxrave.simpmusic.viewModel.LibraryViewModel
 import com.maxrave.simpmusic.viewModel.SongSelectionViewModel
@@ -466,6 +468,9 @@ fun LibraryScreen(
                     containerColor = Color.Transparent,
                 ),
             actions = {
+                ListenTogetherIconButton {
+                    navController.navigate(ListenTogetherDestination)
+                }
                 AnimatedVisibility(
                     !accountThumbnail.isNullOrEmpty(),
                     modifier = Modifier.padding(horizontal = 12.dp),
