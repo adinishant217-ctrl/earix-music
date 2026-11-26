@@ -3,7 +3,7 @@ name = "earix-core"
 version.workspace = true
 edition.workspace = true
 publish.workspace = true
-description = "Platform-independent performance core for Earix (Phase 1: LRC lyrics parsing)"
+description = "Platform-independent performance core for Earix (lyrics parsing, LRCLIB proof-of-work)"
 
 [lib]
 # cdylib -> the Android .so loaded through UniFFI
@@ -16,6 +16,11 @@ crate-type = ["cdylib", "staticlib", "lib"]
 # The library build must NOT pull in the bindgen toolchain (clap and friends): the Android
 # build compiles this crate three times, once per ABI, and would pay for it in CI time.
 uniffi = { version = "0.28.3" }
+# SHA-256 for the LRCLIB proof-of-work search. RustCrypto's sha2 has runtime SHA-NI/ARMv8
+# detection, so the same source is hardware-accelerated on both the host and Android arm64.
+sha2 = "0.10"
+# Derives the Display impl for the UniFFI error enum.
+thiserror = "2"
 
 [features]
 # Only the binding generator needs the CLI; `cargo run --features uniffi-bindgen` uses it.
@@ -28,3 +33,7 @@ required-features = ["uniffi-bindgen"]
 [[bin]]
 name = "lrc-parity"
 path = "src/bin/lrc-parity.rs"
+
+[[bin]]
+name = "stage2-bench"
+path = "src/bin/stage2-bench.rs"

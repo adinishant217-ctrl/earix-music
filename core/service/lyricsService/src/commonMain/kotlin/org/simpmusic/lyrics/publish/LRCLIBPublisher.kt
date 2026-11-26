@@ -52,6 +52,16 @@ private const val POW_TIMEOUT_MS = 60_000L
 /** Progress callback granularity (attempts) — coarse enough to avoid UI churn. */
 private const val PROGRESS_EVERY = 50_000L
 
+/**
+ * Attempts per Rust chunk.
+ *
+ * MEASURED (`scripts/rust/verify-stage2-parity.sh`): one chunk of 100 000 attempts takes about
+ * 6 ms in Rust, against a 46-99 us UniFFI/JNA crossing, so the boundary costs under 2% of the
+ * chunk while cancellation still lands within ~6 ms. Kotlin's `ensureActive()` every 1 000
+ * attempts costs nothing to keep, so the fallback path is unchanged.
+ */
+private const val POW_RUST_CHUNK_ATTEMPTS = 100_000L
+
 /** Solved-token reuse window (LRCLIB tokens live ~4 minutes). */
 private val TOKEN_TTL = 240_000L.milliseconds
 
@@ -304,7 +314,21 @@ object LRCLIBPublisher {
             }
         }
 
-    /** Parallel strided PoW: workers own a MessageDigest each, first match wins. */
+    /**
+     * Parallel strided PoW: workers own a hash context each, first match wins.
+     *
+     * Two implementations of the SAME search, chosen per chunk:
+     *
+     * * **Rust** ([solvePowChunkRust]) hashes the nonce space in ~100 000-attempt slices. Nothing
+     *   is shared with the native side except the loop bounds, so Kotlin keeps the coroutines, the
+     *   strides and the cancellation, and Rust owns only the arithmetic.
+     * * **Kotlin** is the original loop, kept verbatim: it runs on desktop, on iOS, whenever the
+     *   native library is missing or fails its SHA-256 self-test, and from the exact nonce a failed
+     *   chunk asked for — so a native failure can never skip a candidate.
+     *
+     * Both accept the first nonce whose hash is below `target`, which is what the server verifies;
+     * with several workers running, WHICH valid nonce wins is already scheduler-dependent today.
+     */
     suspend fun solvePowFast(
         prefix: String,
         target: String,
@@ -349,6 +373,48 @@ object LRCLIBPublisher {
                                 report(delta)
                             }
                         }
+
+                        // Rust first: chunked so cancellation and progress stay in Kotlin's hands.
+                        // `report` is driven per chunk instead of per `PROGRESS_EVERY` attempts.
+                        var rustExhausted = false
+                        while (nonce < MAX_NONCE) {
+                            ensureActive()
+                            if (id == 0 && nonce == id.toLong()) {
+                                // Preserved forensics: the first attempts, hashed through the SAME
+                                // Kotlin path, so a rejected publish can still be diagnosed from a
+                                // log without the Kotlin loop having run.
+                                for (n in 0L..4L) {
+                                    val len = writeLongAscii(n, buf)
+                                    powHash(prefixBytes, buf, len, hashBuf)
+                                    val hashHex = hashBuf.toHex()
+                                    Logger.d(
+                                        TAG,
+                                        "rust attempt $n: input='$prefix$n' hash=$hashHex first4=${hashHex.take(4)} target=$target",
+                                    )
+                                }
+                            }
+                            val chunk =
+                                solvePowChunkRust(
+                                    prefix = prefix,
+                                    target = target,
+                                    startNonce = nonce,
+                                    stride = workers.toLong(),
+                                    maxAttempts = POW_RUST_CHUNK_ATTEMPTS,
+                                ) ?: break // null = native path unusable; fall through to Kotlin.
+                            report(chunk.attempts)
+                            chunk.nonce?.let { return@async it }
+                            if (chunk.attempts < POW_RUST_CHUNK_ATTEMPTS) {
+                                // Ran off the end of the nonce space: nothing left for this phase.
+                                rustExhausted = true
+                                break
+                            }
+                            nonce += workers.toLong() * POW_RUST_CHUNK_ATTEMPTS
+                        }
+                        if (rustExhausted) {
+                            flush()
+                            return@async null
+                        }
+
                         while (nonce < MAX_NONCE) {
                             if (++checks >= 1000) {
                                 ensureActive()

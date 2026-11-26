@@ -715,6 +715,10 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
+
+
 // A JNA Library to expose the extern-C FFI definitions.
 // This is an implementation detail which will be called internally by the public API.
 
@@ -733,6 +737,10 @@ internal interface UniffiLib : Library {
     fun uniffi_earix_core_fn_func_core_version(uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_earix_core_fn_func_parse_lrc_lines(`data`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_earix_core_fn_func_pow_self_test(uniffi_out_err: UniffiRustCallStatus, 
+    ): Byte
+    fun uniffi_earix_core_fn_func_solve_pow_chunk(`prefix`: RustBuffer.ByValue,`target`: RustBuffer.ByValue,`startNonce`: Long,`stride`: Long,`maxAttempts`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun ffi_earix_core_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -850,6 +858,10 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_earix_core_checksum_func_parse_lrc_lines(
     ): Short
+    fun uniffi_earix_core_checksum_func_pow_self_test(
+    ): Short
+    fun uniffi_earix_core_checksum_func_solve_pow_chunk(
+    ): Short
     fun ffi_earix_core_uniffi_contract_version(
     ): Int
     
@@ -871,6 +883,12 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_earix_core_checksum_func_parse_lrc_lines() != 60428.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_earix_core_checksum_func_pow_self_test() != 12870.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_earix_core_checksum_func_solve_pow_chunk() != 15584.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
 }
@@ -940,6 +958,29 @@ public object FfiConverterLong: FfiConverter<Long, Long> {
 
     override fun write(value: Long, buf: ByteBuffer) {
         buf.putLong(value)
+    }
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterBoolean: FfiConverter<Boolean, Byte> {
+    override fun lift(value: Byte): Boolean {
+        return value.toInt() != 0
+    }
+
+    override fun read(buf: ByteBuffer): Boolean {
+        return lift(buf.get())
+    }
+
+    override fun lower(value: Boolean): Byte {
+        return if (value) 1.toByte() else 0.toByte()
+    }
+
+    override fun allocationSize(value: Boolean) = 1UL
+
+    override fun write(value: Boolean, buf: ByteBuffer) {
+        buf.put(lower(value))
     }
 }
 
@@ -1043,6 +1084,174 @@ public object FfiConverterTypeLrcLine: FfiConverterRustBuffer<LrcLine> {
 
 
 
+/**
+ * Result of one chunk of the search.
+ */
+data class PowChunk (
+    /**
+     * The winning nonce, or `None` when this chunk found no match.
+     */
+    var `nonce`: kotlin.Long?, 
+    /**
+     * How many nonces this chunk hashed. Always `<= max_attempts`.
+     */
+    var `attempts`: kotlin.Long
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePowChunk: FfiConverterRustBuffer<PowChunk> {
+    override fun read(buf: ByteBuffer): PowChunk {
+        return PowChunk(
+            FfiConverterOptionalLong.read(buf),
+            FfiConverterLong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: PowChunk) = (
+            FfiConverterOptionalLong.allocationSize(value.`nonce`) +
+            FfiConverterLong.allocationSize(value.`attempts`)
+    )
+
+    override fun write(value: PowChunk, buf: ByteBuffer) {
+            FfiConverterOptionalLong.write(value.`nonce`, buf)
+            FfiConverterLong.write(value.`attempts`, buf)
+    }
+}
+
+
+
+
+
+/**
+ * Failure modes that send the caller back to the Kotlin implementation.
+ */
+sealed class PowException: kotlin.Exception() {
+    
+    /**
+     * The challenge target is not a hex string, so no comparison is meaningful.
+     */
+    class BadTarget(
+        ) : PowException() {
+        override val message
+            get() = ""
+    }
+    
+    /**
+     * A zero or negative stride would test the same nonce forever.
+     */
+    class BadStride(
+        ) : PowException() {
+        override val message
+            get() = ""
+    }
+    
+    /**
+     * A negative start would produce a nonce the server can never have issued.
+     */
+    class BadStart(
+        ) : PowException() {
+        override val message
+            get() = ""
+    }
+    
+
+    companion object ErrorHandler : UniffiRustCallStatusErrorHandler<PowException> {
+        override fun lift(error_buf: RustBuffer.ByValue): PowException = FfiConverterTypePowError.lift(error_buf)
+    }
+
+    
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePowError : FfiConverterRustBuffer<PowException> {
+    override fun read(buf: ByteBuffer): PowException {
+        
+
+        return when(buf.getInt()) {
+            1 -> PowException.BadTarget()
+            2 -> PowException.BadStride()
+            3 -> PowException.BadStart()
+            else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: PowException): ULong {
+        return when(value) {
+            is PowException.BadTarget -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is PowException.BadStride -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+            is PowException.BadStart -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+            )
+        }
+    }
+
+    override fun write(value: PowException, buf: ByteBuffer) {
+        when(value) {
+            is PowException.BadTarget -> {
+                buf.putInt(1)
+                Unit
+            }
+            is PowException.BadStride -> {
+                buf.putInt(2)
+                Unit
+            }
+            is PowException.BadStart -> {
+                buf.putInt(3)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalLong: FfiConverterRustBuffer<kotlin.Long?> {
+    override fun read(buf: ByteBuffer): kotlin.Long? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterLong.read(buf)
+    }
+
+    override fun allocationSize(value: kotlin.Long?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterLong.allocationSize(value)
+        }
+    }
+
+    override fun write(value: kotlin.Long?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterLong.write(value, buf)
+        }
+    }
+}
+
+
+
 
 /**
  * @suppress
@@ -1093,6 +1302,39 @@ public object FfiConverterSequenceTypeLrcLine: FfiConverterRustBuffer<List<LrcLi
     uniffiRustCall() { _status ->
     UniffiLib.INSTANCE.uniffi_earix_core_fn_func_parse_lrc_lines(
         FfiConverterString.lower(`data`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Proves the native SHA-256 path is producing the expected bytes before it is trusted.
+         *
+         * Kotlin already self-tests its own hasher (`SHA256("hello")`) because a platform provider can
+         * return the wrong algorithm or fail to load. The Rust core gets the same test for the same
+         * reason: a `false` here makes the bridge stay on the Kotlin loop, so a broken native build
+         * degrades to the previous behaviour instead of computing nonces nobody can verify.
+         */ fun `powSelfTest`(): kotlin.Boolean {
+            return FfiConverterBoolean.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_earix_core_fn_func_pow_self_test(
+        _status)
+}
+    )
+    }
+    
+
+        /**
+         * Test up to `max_attempts` nonces in `start, start + stride, start + 2 * stride, ...`.
+         *
+         * The search stops at [`POW_MAX_NONCE`] exactly as the Kotlin loop does, so a chunk that runs off
+         * the end of the nonce space returns `nonce: None` with fewer attempts than requested.
+         */
+    @Throws(PowException::class) fun `solvePowChunk`(`prefix`: kotlin.String, `target`: kotlin.String, `startNonce`: kotlin.Long, `stride`: kotlin.Long, `maxAttempts`: kotlin.Long): PowChunk {
+            return FfiConverterTypePowChunk.lift(
+    uniffiRustCallWithError(PowException) { _status ->
+    UniffiLib.INSTANCE.uniffi_earix_core_fn_func_solve_pow_chunk(
+        FfiConverterString.lower(`prefix`),FfiConverterString.lower(`target`),FfiConverterLong.lower(`startNonce`),FfiConverterLong.lower(`stride`),FfiConverterLong.lower(`maxAttempts`),_status)
 }
     )
     }

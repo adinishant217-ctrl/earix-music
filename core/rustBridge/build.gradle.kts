@@ -18,14 +18,23 @@ kotlin {
  * `src/main/jniLibs` root. Desktop and iOS deliberately do NOT depend on this module: they keep
  * the Kotlin implementation, so nothing breaks when no .so exists there.
  *
- * Scope note: this module contains pure lyrics text parsing. It has no relationship to
- * Media3/ExoPlayer, the playback service, the queue or the audio pipeline.
+ * Scope note: this module contains lyrics text parsing and the LRCLIB proof-of-work nonce search.
+ * Both are pure computation — no audio, no Media3/ExoPlayer, no playback service, no queue and no
+ * audio pipeline. Every entry point is failure-tolerant (`RustLyricsBridge`, `RustPowBridge`) and
+ * returns `null` instead of throwing, which sends the caller back to the Kotlin implementation.
  *
- * Regenerating the bindings after changing the Rust API:
+ * Regenerating the bindings after changing the Rust API — the DEBUG library on purpose, because
+ * `strip = "symbols"` in the release profile removes the UniFFI metadata the generator reads
+ * (`print-repr` printing `[]` is the symptom):
+ *   cargo build -p earix-core --lib
  *   cargo run -p earix-core --features uniffi-bindgen --bin uniffi-bindgen -- \
  *     generate --library rust/target/debug/libearix_core.so --language kotlin \
  *     --out-dir <tmp> --config rust/earix-core/uniffi.toml --no-format
  * then copy the generated `earix_core.kt` into `src/main/java/com/maxrave/earixrust/`.
+ *
+ * Equivalence and benchmarking: `scripts/rust/verify-lrc-parity.sh` (Phase 1) and
+ * `scripts/rust/verify-stage2-parity.sh` (Phase 2) run the real Kotlin implementations against the
+ * real Rust ones through these same bindings, on the host.
  */
 
 /** Pinned NDK; CI installs exactly this version and `ndkVersion` below reports it to AGP. */

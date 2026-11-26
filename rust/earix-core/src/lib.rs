@@ -1,14 +1,16 @@
 //! Earix Rust core.
 //!
-//! Phase 1 scope is deliberately narrow: the line-synced LRC *text* parser only
-//! ([`lyrics::parse_lrc_lines`]). This crate contains no audio, no playback, no decoder,
-//! no Android API and no global state. It is pure string processing so that the same code
-//! can later be reused by the desktop and iOS targets.
+//! Scope: the line-synced LRC *text* parser ([`lyrics::parse_lrc_lines`]) and the chunked
+//! LRCLIB proof-of-work nonce search ([`pow::solve_pow_chunk`]). This crate contains no audio,
+//! no playback, no decoder, no Android API and no global state, and it starts no threads — the
+//! caller keeps its own concurrency and its own cancellation. That is pure computation, so the
+//! same code can be reused by the desktop and iOS targets.
 //!
 //! Safety: this crate contains **no `unsafe` code**. The only unsafe surface is inside
 //! `uniffi`, which owns the FFI boundary and converts panics into Kotlin exceptions.
 
 pub mod lyrics;
+pub mod pow;
 
 uniffi::setup_scaffolding!();
 
