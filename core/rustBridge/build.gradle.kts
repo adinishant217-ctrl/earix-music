@@ -1,17 +1,3 @@
-import org.gradle.api.DefaultTask
-import org.gradle.api.file.DirectoryProperty
-import org.gradle.api.provider.MapProperty
-import org.gradle.api.provider.Property
-import org.gradle.api.tasks.Input
-import org.gradle.api.tasks.InputDirectory
-import org.gradle.api.tasks.OutputDirectory
-import org.gradle.api.tasks.PathSensitive
-import org.gradle.api.tasks.PathSensitivity
-import org.gradle.api.tasks.TaskAction
-import org.gradle.process.ExecOperations
-import java.io.File
-import javax.inject.Inject
-
 plugins {
     alias(libs.plugins.android.library)
 }
@@ -27,20 +13,22 @@ kotlin {
 /**
  * Earix Rust core bridge (Android only).
  *
- * Holds the UniFFI-generated Kotlin bindings plus a thin, failure-tolerant wrapper. The
- * native library `libearix_core.so` is compiled by [CargoBuildAndroidTask] from `rust/` and
- * packaged through `jniLibs`. Desktop and iOS deliberately do NOT depend on this module:
- * they keep the Kotlin implementation, so nothing breaks when no .so exists there.
+ * Holds the UniFFI-generated Kotlin bindings plus a thin, failure-tolerant wrapper. The native
+ * library `libearix_core.so` is compiled from `rust/` and packaged through the module's default
+ * `src/main/jniLibs` root. Desktop and iOS deliberately do NOT depend on this module: they keep
+ * the Kotlin implementation, so nothing breaks when no .so exists there.
  *
  * Scope note: this module contains pure lyrics text parsing. It has no relationship to
  * Media3/ExoPlayer, the playback service, the queue or the audio pipeline.
+ *
+ * Regenerating the bindings after changing the Rust API:
+ *   cargo run -p earix-core --features uniffi-bindgen --bin uniffi-bindgen -- \
+ *     generate --library rust/target/debug/libearix_core.so --language kotlin \
+ *     --out-dir <tmp> --config rust/earix-core/uniffi.toml --no-format
+ * then copy the generated `earix_core.kt` into `src/main/java/com/maxrave/earixrust/`.
  */
 
-/**
- * Pinned NDK. CI installs exactly this one; it is also what `ndkVersion` reports to AGP so a
- * developer cannot silently link the Rust objects against a different toolchain than AGP
- * expects.
- */
+/** Pinned NDK; CI installs exactly this version and `ndkVersion` below reports it to AGP. */
 val rustNdkVersion = "27.0.12077973"
 
 /** ABI -> Rust target triple. Mirrors `androidApp`'s `abiFilters` exactly. */
@@ -51,64 +39,91 @@ val rustAbis =
         "x86_64" to "x86_64-linux-android",
     )
 
+val rustApiLevel = 26
+
+val rustWorkspaceDir = rootProject.layout.projectDirectory.dir("rust")
+
+android {
+    namespace = "com.maxrave.earixrust"
+    compileSdk = 37
+    ndkVersion = rustNdkVersion
+
+    defaultConfig {
+        minSdk = rustApiLevel
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
+    }
+}
+
+// --- Rust native build -----------------------------------------------------------------------
+//
+// Deliberately built from plain Exec/Copy tasks rather than a custom Task subclass: a class
+// declared inside a .gradle.kts is compiled as a non-static inner class, which Gradle refuses to
+// instantiate ("Class Build_gradle.X is a non-static inner class"). Exec also keeps the build
+// configuration-cache compatible.
+//
+// `cargo-ndk` is not used: pointing CARGO_TARGET_<TRIPLE>_LINKER at the NDK's clang wrapper is all
+// rustc needs, which keeps CI to a plain rustup install.
+
 /**
- * Compiles `rust/` for every Android ABI and stages the `.so` files for `jniLibs`.
- *
- * Deliberately does NOT use `cargo-ndk`: setting `CARGO_TARGET_<TRIPLE>_LINKER` to the NDK's
- * clang wrapper is all rustc needs, and it keeps CI to a plain `rustup` install.
+ * NDK location. Resolved from the environment only; the default matches the GitHub runner image so
+ * a missing variable is not by itself a configuration failure. A missing NDK is reported by the
+ * build task with an actionable message, and can be skipped entirely with -PskipRustBuild=true.
  */
-abstract class CargoBuildAndroidTask : DefaultTask() {
-    @get:InputDirectory
-    @get:PathSensitive(PathSensitivity.RELATIVE)
-    abstract val rustWorkspace: DirectoryProperty
+val ndkRoot: String =
+    System.getenv("ANDROID_NDK_HOME")
+        ?: System.getenv("ANDROID_NDK_ROOT")
+        ?: System.getenv("ANDROID_SDK_ROOT")?.let { "$it/ndk/$rustNdkVersion" }
+        ?: System.getenv("ANDROID_HOME")?.let { "$it/ndk/$rustNdkVersion" }
+        ?: "/usr/local/lib/android/sdk/ndk/$rustNdkVersion"
 
-    @get:OutputDirectory
-    abstract val jniLibsDir: DirectoryProperty
+/** NDK still ships `darwin-x86_64` on Apple Silicon, so this is keyed on the host OS only. */
+val ndkHostTag: String =
+    when {
+        System.getProperty("os.name").lowercase().contains("win") -> "windows-x86_64"
+        System.getProperty("os.name").lowercase().contains("mac") -> "darwin-x86_64"
+        else -> "linux-x86_64"
+    }
 
-    @get:Input
-    abstract val ndkDirectory: Property<String>
+fun clangName(
+    triple: String,
+    apiLevel: Int,
+): String {
+    // The API-level clang wrapper is spelled `armv7a-...` for 32-bit ARM only.
+    val prefix = if (triple == "armv7-linux-androideabi") "armv7a-linux-androideabi" else triple
+    return "$prefix$apiLevel-clang"
+}
 
-    @get:Input
-    abstract val apiLevel: Property<Int>
+fun taskSuffix(abi: String): String =
+    abi.split('-', '_').joinToString("") { it.replaceFirstChar { c -> c.uppercaseChar() } }
 
-    @get:Input
-    abstract val abiToTriple: MapProperty<String, String>
+val skipRustBuild =
+    providers
+        .gradleProperty("skipRustBuild")
+        .map { it.toBoolean() }
+        .orElse(false)
 
-    @get:Inject
-    abstract val execOps: ExecOperations
+val rustSourceFiles =
+    rustWorkspaceDir.asFileTree.matching {
+        include("**/*.rs", "**/Cargo.toml", "**/Cargo.lock", "**/uniffi.toml")
+        exclude("target/**")
+    }
 
-    @TaskAction
-    fun build() {
-        val ndk = File(ndkDirectory.get())
-        check(ndk.isDirectory) {
-            "Android NDK not found at '$ndk'. Install NDK $rustNdkVersion (sdkmanager \"ndk;$rustNdkVersion\") " +
-                "or set ANDROID_NDK_HOME. To build the app without the Rust core, pass -PskipRustBuild=true " +
-                "(the Kotlin lyrics parser is then used at runtime)."
-        }
+val rustStageTasks =
+    rustAbis.map { (abi, triple) ->
+        val suffix = taskSuffix(abi)
+        val linker = "$ndkRoot/toolchains/llvm/prebuilt/$ndkHostTag/bin/${clangName(triple, rustApiLevel)}"
+        val builtLibrary = rustWorkspaceDir.file("target/$triple/release/libearix_core.so")
+        val stagedDir = layout.projectDirectory.dir("src/main/jniLibs/$abi")
 
-        // Resolve the host toolchain folder instead of guessing from os.name: NDK still ships
-        // `darwin-x86_64` on Apple Silicon, so the folder name is not derivable from the arch.
-        val prebuilt =
-            File(ndk, "toolchains/llvm/prebuilt")
-                .listFiles()
-                ?.filter { it.isDirectory }
-                ?.minByOrNull { it.name }
-                ?: error("No LLVM toolchain under $ndk/toolchains/llvm/prebuilt")
-        val binDir = File(prebuilt, "bin")
-
-        val workspace = rustWorkspace.get().asFile
-        val outDir = jniLibsDir.get().asFile
-        outDir.mkdirs()
-
-        abiToTriple.get().forEach { (abi, triple) ->
-            // Clear only the ABI folders this task owns, so a stale .so cannot ship after an ABI
-            // is dropped from the list.
-            File(outDir, abi).deleteRecursively()
-            val clang = File(binDir, "${clangPrefix(triple)}${apiLevel.get()}-clang")
-            check(clang.isFile) { "Missing NDK linker for $abi: expected $clang" }
-
-            execOps.exec {
-                workingDir = workspace
+        val cargoTask =
+            tasks.register<Exec>("cargoBuild${suffix}") {
+                group = "rust"
+                description = "Compiles the Earix Rust core for $abi ($triple)."
+                workingDir = rustWorkspaceDir.asFile
                 commandLine(
                     "cargo",
                     "build",
@@ -119,96 +134,38 @@ abstract class CargoBuildAndroidTask : DefaultTask() {
                     "--target",
                     triple,
                 )
-                environment(
-                    "CARGO_TARGET_${triple.uppercase().replace('-', '_')}_LINKER",
-                    clang.absolutePath,
-                )
+                environment("CARGO_TARGET_${triple.uppercase().replace('-', '_')}_LINKER", linker)
+
+                inputs.files(rustSourceFiles).withPathSensitivity(PathSensitivity.RELATIVE)
+                outputs.file(builtLibrary)
+
+                doFirst {
+                    check(File(linker).isFile) {
+                        "Android NDK linker not found at '$linker'. Install NDK $rustNdkVersion " +
+                            "(sdkmanager \"ndk;$rustNdkVersion\"), set ANDROID_NDK_HOME, or build " +
+                            "without the Rust core using -PskipRustBuild=true."
+                    }
+                }
+
+                onlyIf("Rust build enabled (-PskipRustBuild is not true)") { !skipRustBuild.get() }
             }
 
-            val built = File(workspace, "target/$triple/release/libearix_core.so")
-            check(built.isFile) { "cargo did not produce $built" }
-
-            val dest = File(outDir, "$abi/libearix_core.so")
-            dest.parentFile.mkdirs()
-            built.copyTo(dest, overwrite = true)
-            logger.lifecycle("Earix Rust: staged $abi (${dest.length()} bytes)")
+        tasks.register<Copy>("stageRust${suffix}") {
+            group = "rust"
+            description = "Copies the $abi Rust library into the module's jniLibs root."
+            dependsOn(cargoTask)
+            from(builtLibrary)
+            into(stagedDir)
+            onlyIf("Rust build enabled (-PskipRustBuild is not true)") { !skipRustBuild.get() }
         }
     }
 
-    /** The API-level-specific clang wrapper name differs from the triple for 32-bit ARM. */
-    private fun clangPrefix(triple: String): String =
-        if (triple == "armv7-linux-androideabi") "armv7a-linux-androideabi" else triple
-}
-
-val rustWorkspaceDir = rootProject.layout.projectDirectory.dir("rust")
-
-// Staged into the DEFAULT jniLibs root (`src/main/jniLibs`, gitignored) rather than through
-// `android.sourceSets[...].jniLibs.srcDir(...)`: on AGP 9 that accessor throws
-// `DefaultAndroidLibrarySourceSet_Decorated cannot be cast to AndroidLibrarySourceSet` when the
-// configuration is realised. The default root needs no DSL and is packaged exactly the same way.
-val rustJniLibsDir = layout.projectDirectory.dir("src/main/jniLibs")
-
-android {
-    namespace = "com.maxrave.earixrust"
-    compileSdk = 37
-    ndkVersion = rustNdkVersion
-
-    defaultConfig {
-        minSdk = 26
-    }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_21
-        targetCompatibility = JavaVersion.VERSION_21
-    }
-}
-
-// Resolved from the environment only: `sdkDirectory` is not part of AGP's stable public DSL, and
-// an env var is what CI and every Android dev setup already exports. The task reports a clear
-// error when none of these resolve to a real NDK.
-val ndkPathProvider =
-    providers
-        .environmentVariable("ANDROID_NDK_HOME")
-        .orElse(providers.environmentVariable("ANDROID_NDK_ROOT"))
-        .orElse(
-            providers
-                .environmentVariable("ANDROID_SDK_ROOT")
-                .orElse(providers.environmentVariable("ANDROID_HOME"))
-                .map { "$it/ndk/$rustNdkVersion" },
-        )
-
 val cargoBuildAndroid =
-    tasks.register<CargoBuildAndroidTask>("cargoBuildAndroidJniLibs") {
-        description = "Builds the Earix Rust core for every packaged Android ABI."
+    tasks.register("cargoBuildAndroidJniLibs") {
         group = "rust"
-        rustWorkspace.set(rustWorkspaceDir)
-        jniLibsDir.set(rustJniLibsDir)
-        ndkDirectory.set(ndkPathProvider)
-        apiLevel.set(26)
-        abiToTriple.set(rustAbis)
-
-        // Cargo is incremental on its own; these declarations just let Gradle skip the task
-        // entirely when no Rust source changed.
-        inputs
-            .files(
-                rustWorkspaceDir.asFileTree.matching {
-                    include("**/*.rs", "**/Cargo.toml", "**/Cargo.lock", "**/uniffi.toml")
-                    exclude("target/**")
-                },
-            ).withPathSensitivity(PathSensitivity.RELATIVE)
+        description = "Builds the Earix Rust core for every packaged Android ABI."
+        dependsOn(rustStageTasks)
     }
-
-// Fail loudly if the toolchain is missing, rather than shipping an APK silently missing the
-// native parser. Developers without Rust can opt out explicitly.
-val skipRustBuild =
-    providers
-        .gradleProperty("skipRustBuild")
-        .map { it.toBoolean() }
-        .orElse(false)
-
-cargoBuildAndroid.configure {
-    onlyIf("Rust build enabled (-PskipRustBuild is not true)") { !skipRustBuild.get() }
-}
 
 tasks.named("preBuild") {
     dependsOn(cargoBuildAndroid)
