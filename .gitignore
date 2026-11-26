@@ -48,3 +48,7 @@ sentry.properties
 /desktopApp/generated.conveyor.conf
 # Conveyor output directory
 /output/
+
+# Rust core build artifacts (cargo target dir) and the generated jniLibs staging dir
+/rust/target/
+/core/rustBridge/build/

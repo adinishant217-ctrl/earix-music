@@ -4,13 +4,15 @@ on:
   release:
     types: [published]
   workflow_dispatch:
-  # Build-only triggers: pushes to the Listen Together test branch and to main build a downloadable
-  # debug APK. Publishing stays gated on the `release` event below, so a push here can never create
-  # a GitHub release or reach users.
+  # Build-only triggers. `main` and `listen-together-test` keep their existing behaviour;
+  # `rust-migration-test` is the experimental Rust migration branch and is deliberately
+  # build-only as well. Publishing stays gated on the `release` event below, so a push to any
+  # of these branches can never create a GitHub release or reach users.
   push:
     branches:
       - listen-together-test
       - main
+      - rust-migration-test
 
 jobs:
   build:
@@ -31,6 +33,43 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
+      # The Rust core is cross-compiled by Gradle (see :rustBridge:cargoBuildAndroidJniLibs),
+      # which invokes cargo directly and points CARGO_TARGET_*_LINKER at the NDK clang wrapper.
+      # Only rustup + the three Android targets are needed.
+      - name: Set up Rust
+        run: |
+          rustup toolchain install stable --profile minimal --no-self-update
+          rustup default stable
+          rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
+          cargo --version
+          rustc --version
+
+      - name: Cache Rust build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            rust/target
+          key: rust-${{ runner.os }}-${{ hashFiles('rust/Cargo.lock') }}
+          restore-keys: |
+            rust-${{ runner.os }}-
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      # Pinned to the same version as :rustBridge's `ndkVersion`. Installing it explicitly keeps
+      # the Rust objects and AGP on one toolchain and avoids relying on AGP's auto-download.
+      - name: Install Android NDK
+        run: |
+          yes | sdkmanager --licenses > /dev/null || true
+          sdkmanager --install "ndk;27.0.12077973"
+
+      # Fails fast on parser regressions before the (much slower) Gradle build starts.
+      - name: Rust core tests
+        run: cargo test --locked --manifest-path rust/Cargo.toml
+
       - name: Decode Keystore
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > androidApp/earix-release.jks
@@ -39,6 +78,11 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      # Kotlin half of the Kotlin/Rust equivalence contract: the golden test asserts the same
+      # expected lines as rust/earix-core/tests/lrc_document.rs.
+      - name: Kotlin lyrics parser tests
+        run: ./gradlew :lyricsService:jvmTest --no-daemon
+
       - name: Build Signed APK
         run: |
           ./gradlew :androidApp:assembleDebug --no-daemon \
@@ -46,6 +90,11 @@ jobs:
             -PEARIX_KEYSTORE_PASSWORD="${{ secrets.KEYSTORE_PASSWORD }}" \
             -PEARIX_KEY_ALIAS="${{ secrets.KEY_ALIAS }}" \
             -PEARIX_KEY_PASSWORD="${{ secrets.KEY_PASSWORD }}"
+
+      - name: Report packaged native libraries
+        run: |
+          unzip -l androidApp/build/outputs/apk/debug/androidApp-debug.apk \
+            | grep -E "lib/.*\.so" | sort
 
       - name: List APK files
         run: ls -la androidApp/build/outputs/apk/debug/

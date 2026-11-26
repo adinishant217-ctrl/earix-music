@@ -1,0 +1,20 @@
+[workspace]
+resolver = "2"
+members = ["earix-core"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# Release profile tuned for a shipped Android .so:
+# - thin LTO: most of the cross-crate inlining win without the single-unit build time
+# - codegen-units = 1: one unit so the optimiser sees the whole crate
+# - panic stays "unwind": UniFFI's generated FFI wrappers catch panics and convert them
+#   into Kotlin exceptions. panic = "abort" would make every panic abort the whole
+#   Android process instead of falling back to the Kotlin parser.
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = "symbols"

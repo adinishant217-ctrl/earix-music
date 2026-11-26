@@ -1,0 +1,30 @@
+[package]
+name = "earix-core"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+description = "Platform-independent performance core for Earix (Phase 1: LRC lyrics parsing)"
+
+[lib]
+# cdylib -> the Android .so loaded through UniFFI
+# staticlib -> iOS/other static linking later
+# lib -> lets the test suite and the parity/benchmark binary use the crate normally
+name = "earix_core"
+crate-type = ["cdylib", "staticlib", "lib"]
+
+[dependencies]
+# The library build must NOT pull in the bindgen toolchain (clap and friends): the Android
+# build compiles this crate three times, once per ABI, and would pay for it in CI time.
+uniffi = { version = "0.28.3" }
+
+[features]
+# Only the binding generator needs the CLI; `cargo run --features uniffi-bindgen` uses it.
+uniffi-bindgen = ["uniffi/cli"]
+
+[[bin]]
+name = "uniffi-bindgen"
+required-features = ["uniffi-bindgen"]
+
+[[bin]]
+name = "lrc-parity"
+path = "src/bin/lrc-parity.rs"

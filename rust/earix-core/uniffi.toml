@@ -1,0 +1,8 @@
+# UniFFI binding configuration.
+#
+# package_name must match the Kotlin package of the :rustBridge Android library, and
+# cdylib_name must match the [lib] name above — that is the name `System.loadLibrary`
+# resolves to `lib<cdylib_name>.so` inside the APK.
+[bindings.kotlin]
+package_name = "com.maxrave.earixrust"
+cdylib_name = "earix_core"

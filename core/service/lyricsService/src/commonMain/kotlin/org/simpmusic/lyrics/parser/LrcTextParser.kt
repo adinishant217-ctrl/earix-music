@@ -3,36 +3,53 @@ package org.simpmusic.lyrics.parser
 import com.maxrave.domain.extension.decodeHtmlEntities
 import org.simpmusic.lyrics.domain.Lyrics
 
+/**
+ * Size gate for the Rust parser, in UTF-16 chars.
+ *
+ * MEASURED, not guessed. `scripts/rust/verify-lrc-parity.sh` runs the real Kotlin parser and the
+ * real Rust parser through the same UniFFI/JNA bindings, on the JVM (x86_64, JDK 21). Six runs:
+ *
+ * | document                  | Kotlin        | Rust          | result            |
+ * |---------------------------|---------------|---------------|-------------------|
+ * | 10 lines / 266 B          | 7.8-13.1 us   | 33.4-42.0 us  | Kotlin 3.0-4.4x faster |
+ * | 3,635 lines / 76 KB       | 1.30-1.75 ms  | 0.91-1.25 ms  | Rust 1.40-1.62x faster |
+ *
+ * The Rust side pays a fixed ~31-40 us per document to cross the UniFFI boundary and lift a list
+ * of records, against ~3-6 us of Kotlin call overhead. Fitting both shapes puts the crossover at
+ * roughly 160-320 lines (8-16 KB), so ordinary lyrics are always FASTER in Kotlin and the Rust
+ * path is only used above this gate, where it measurably wins.
+ *
+ * This is deliberate, not a temporary default: shipping Rust for small documents would make the
+ * feature slower. Re-measure on a device before lowering it — ART's JNA cost is not identical to
+ * HotSpot's — and note that the durable fix for small documents is a JNI or packed-buffer binding,
+ * not a lower gate.
+ */
+private const val LRC_RUST_MIN_CHARS = 32_768
+
+/**
+ * Parses line-synced LRC lyrics.
+ *
+ * Delegates the text/timestamp work to the Rust core on Android and falls back to
+ * [parseSyncedLrcLinesKotlin] everywhere else, or whenever the Rust core is unavailable. Both
+ * paths produce the same [ParsedLrcLine] list, and [decodeHtmlEntities] is applied afterwards by
+ * this function regardless of which one ran — so the rendered result cannot diverge.
+ *
+ * Sync/timing semantics are unchanged: centiseconds become milliseconds (x10), `endTimeMs` stays
+ * `"0"`, and the sync type stays `LINE_SYNCED`. Playback reads these values exactly as before.
+ */
 fun parseSyncedLyrics(data: String): Lyrics {
-    val regex = Regex("\\[(\\d{2}):(\\d{2})\\.(\\d{2})\\](.+)")
-    // Strip leading/trailing blank lines (publishers often end with "\n", which would
-    // otherwise produce a final empty split). Interior lines are untouched.
-    val lines = data.trim().lines()
-    val linesLyrics = ArrayList<Lyrics.LyricsX.Line>()
-    lines.map { line ->
-        val matchResult = regex.matchEntire(line)
-        if (matchResult != null) {
-            val minutes = matchResult.groupValues[1].toLong()
-            val seconds = matchResult.groupValues[2].toLong()
-            // Group 3 is CENTIseconds (LRC [mm:ss.xx]) — ×10 for milliseconds. The rich
-            // parser already does this; the line parser previously added the raw value,
-            // shrinking every timestamp 10x and breaking sync.
-            val milliseconds = matchResult.groupValues[3].toLong() * 10
-            val timeInMillis = minutes * 60_000L + seconds * 1000L + milliseconds
-            // Trim, don't drop a fixed first character. Most providers leave a space after
-            // "]", but LRCLIB packs the text right against it — "[00:27.12]boy, you got me"
-            // — so removeRange(0, 1) ate the first letter of every single line.
-            val rawContent = matchResult.groupValues[4]
-            val content = if (rawContent.isBlank()) "♫" else rawContent.trimStart()
-            linesLyrics.add(
-                Lyrics.LyricsX.Line(
-                    endTimeMs = "0",
-                    startTimeMs = timeInMillis.toString(),
-                    syllables = listOf(),
-                    words = decodeHtmlEntities(content),
-                ),
-            )
-        }
+    val parsed = (if (data.length >= LRC_RUST_MIN_CHARS) parseLrcWithRust(data) else null)
+        ?: parseSyncedLrcLinesKotlin(data)
+    val linesLyrics = ArrayList<Lyrics.LyricsX.Line>(parsed.size)
+    for (line in parsed) {
+        linesLyrics.add(
+            Lyrics.LyricsX.Line(
+                endTimeMs = "0",
+                startTimeMs = line.startTimeMs.toString(),
+                syllables = listOf(),
+                words = decodeHtmlEntities(line.text),
+            ),
+        )
     }
     return Lyrics(
         lyrics =
@@ -41,6 +58,44 @@ fun parseSyncedLyrics(data: String): Lyrics {
                 syncType = "LINE_SYNCED",
             ),
     )
+}
+
+/**
+ * Kotlin reference implementation of the LRC line parser.
+ *
+ * Kept as the runtime fallback and as the equivalence oracle for the Rust port. Do not "clean up"
+ * its quirks — the Rust implementation mirrors them on purpose, and the golden tests in
+ * `LrcParserGoldenTest` plus the Rust `lrc_document` test assert the same expectations:
+ *
+ * * the document is trimmed before splitting, so trailing whitespace on the FINAL line is gone
+ *   (a whitespace-only final line therefore stops matching and is dropped entirely);
+ * * `(.+)` requires at least one content character, so a bare `[00:24.00]` line is dropped while
+ *   `[00:24.00]   ` is kept as a `♫` line;
+ * * only leading whitespace is trimmed from the content.
+ */
+internal fun parseSyncedLrcLinesKotlin(data: String): List<ParsedLrcLine> {
+    val regex = Regex("\\[(\\d{2}):(\\d{2})\\.(\\d{2})\\](.+)")
+    // Strip leading/trailing blank lines (publishers often end with "\n", which would
+    // otherwise produce a final empty split). Interior lines are untouched.
+    val lines = data.trim().lines()
+    val parsed = ArrayList<ParsedLrcLine>(lines.size)
+    for (line in lines) {
+        val matchResult = regex.matchEntire(line) ?: continue
+        val minutes = matchResult.groupValues[1].toLong()
+        val seconds = matchResult.groupValues[2].toLong()
+        // Group 3 is CENTIseconds (LRC [mm:ss.xx]) — ×10 for milliseconds. The rich
+        // parser already does this; the line parser previously added the raw value,
+        // shrinking every timestamp 10x and breaking sync.
+        val milliseconds = matchResult.groupValues[3].toLong() * 10
+        val timeInMillis = minutes * 60_000L + seconds * 1000L + milliseconds
+        // Trim, don't drop a fixed first character. Most providers leave a space after
+        // "]", but LRCLIB packs the text right against it — "[00:27.12]boy, you got me"
+        // — so removeRange(0, 1) ate the first letter of every single line.
+        val rawContent = matchResult.groupValues[4]
+        val content = if (rawContent.isBlank()) "♫" else rawContent.trimStart()
+        parsed.add(ParsedLrcLine(startTimeMs = timeInMillis, text = content))
+    }
+    return parsed
 }
 
 fun parseRichSyncLyrics(data: String): Lyrics {

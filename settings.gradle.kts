@@ -52,6 +52,7 @@ include(
     ":media-jvm-ui",
     ":media3",
     ":media3-ui",
+    ":rustBridge",
     ":crashlytics",
     ":crashlytics-empty",
     ":cast",
@@ -82,5 +83,9 @@ project(":media-jvm").projectDir = File(mediaDir, "media-jvm")
 project(":media-jvm-ui").projectDir = File(mediaDir, "media-jvm-ui")
 project(":media3").projectDir = File(mediaDir, "media3")
 project(":media3-ui").projectDir = File(mediaDir, "media3-ui")
+
+// Earix Rust core bridge (Android only). Holds the UniFFI bindings and packages
+// libearix_core.so; `rust/` at the repo root is its cargo workspace.
+project(":rustBridge").projectDir = File(coreDir, "rustBridge")
 
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")

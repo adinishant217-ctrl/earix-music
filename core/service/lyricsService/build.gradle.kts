@@ -79,8 +79,7 @@ kotlin {
                 // commonMain because both are ordinary Java libraries with no Kotlin/Native build:
                 // putting them in commonMain would break the iOS compilation, which gets a no-op
                 // actual instead. Kanji readings are context-dependent, so a lookup table cannot do
-                // it — kuromoji is a real morphological analyzer, which is why it costs ~12.7 MB.
-                //
+                // it — kuromoji is a real morphological analyzer, which is why it costs ~12.7 MB.                //
                 // pinyin4j rather than TinyPinyin, which is what Metrolist uses: TinyPinyin is only
                 // published on JitPack, its POM there names its own groupId with the wrong case
                 // (promeG vs promeg) so the transitive resolve dead-ends, and it drags in
@@ -89,6 +88,10 @@ kotlin {
                 // declared dependency is junit at test scope.
                 implementation(libs.kuromoji.ipadic)
                 implementation(libs.pinyin4j)
+
+                // Earix Rust core: LRC line parsing. Android-only on purpose — desktop and iOS
+                // keep the Kotlin parser, so no other target gains a native dependency.
+                implementation(projects.rustBridge)
             }
         }
 
