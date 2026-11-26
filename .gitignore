@@ -52,3 +52,5 @@ sentry.properties
 # Rust core build artifacts (cargo target dir) and the generated jniLibs staging dir
 /rust/target/
 /core/rustBridge/build/
+# Rust .so files staged into the module's default jniLibs root by :rustBridge:cargoBuildAndroidJniLibs
+/core/rustBridge/src/main/jniLibs/

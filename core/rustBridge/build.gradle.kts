@@ -98,10 +98,12 @@ abstract class CargoBuildAndroidTask : DefaultTask() {
 
         val workspace = rustWorkspace.get().asFile
         val outDir = jniLibsDir.get().asFile
-        outDir.deleteRecursively()
         outDir.mkdirs()
 
         abiToTriple.get().forEach { (abi, triple) ->
+            // Clear only the ABI folders this task owns, so a stale .so cannot ship after an ABI
+            // is dropped from the list.
+            File(outDir, abi).deleteRecursively()
             val clang = File(binDir, "${clangPrefix(triple)}${apiLevel.get()}-clang")
             check(clang.isFile) { "Missing NDK linker for $abi: expected $clang" }
 
@@ -139,7 +141,12 @@ abstract class CargoBuildAndroidTask : DefaultTask() {
 }
 
 val rustWorkspaceDir = rootProject.layout.projectDirectory.dir("rust")
-val rustJniLibsDir = layout.buildDirectory.dir("rustJniLibs")
+
+// Staged into the DEFAULT jniLibs root (`src/main/jniLibs`, gitignored) rather than through
+// `android.sourceSets[...].jniLibs.srcDir(...)`: on AGP 9 that accessor throws
+// `DefaultAndroidLibrarySourceSet_Decorated cannot be cast to AndroidLibrarySourceSet` when the
+// configuration is realised. The default root needs no DSL and is packaged exactly the same way.
+val rustJniLibsDir = layout.projectDirectory.dir("src/main/jniLibs")
 
 android {
     namespace = "com.maxrave.earixrust"
@@ -154,8 +161,6 @@ android {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
     }
-
-    sourceSets.getByName("main").jniLibs.srcDir(rustJniLibsDir)
 }
 
 // Resolved from the environment only: `sdkDirectory` is not part of AGP's stable public DSL, and
