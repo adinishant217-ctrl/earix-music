@@ -100,17 +100,15 @@ fun clangName(
 fun taskSuffix(abi: String): String =
     abi.split('-', '_').joinToString("") { it.replaceFirstChar { c -> c.uppercaseChar() } }
 
+// Resolved eagerly at configuration time on purpose: `onlyIf { }` / `doFirst { }` lambdas written
+// in a .kts are compiled as inner classes that reference the build script, and the configuration
+// cache refuses to serialize those ("cannot serialize Gradle script object references"). A plain
+// boolean applied to `enabled` has no such problem.
 val skipRustBuild =
     providers
         .gradleProperty("skipRustBuild")
         .map { it.toBoolean() }
-        .orElse(false)
-
-val rustSourceFiles =
-    rustWorkspaceDir.asFileTree.matching {
-        include("**/*.rs", "**/Cargo.toml", "**/Cargo.lock", "**/uniffi.toml")
-        exclude("target/**")
-    }
+        .getOrElse(false)
 
 val rustStageTasks =
     rustAbis.map { (abi, triple) ->
@@ -136,18 +134,23 @@ val rustStageTasks =
                 )
                 environment("CARGO_TARGET_${triple.uppercase().replace('-', '_')}_LINKER", linker)
 
-                inputs.files(rustSourceFiles).withPathSensitivity(PathSensitivity.RELATIVE)
+                inputs
+                    .dir(rustWorkspaceDir.dir("earix-core/src"))
+                    .withPathSensitivity(PathSensitivity.RELATIVE)
+                inputs
+                    .dir(rustWorkspaceDir.dir("earix-core/tests"))
+                    .withPathSensitivity(PathSensitivity.RELATIVE)
+                inputs.files(
+                    rustWorkspaceDir.file("Cargo.toml"),
+                    rustWorkspaceDir.file("Cargo.lock"),
+                    rustWorkspaceDir.file("earix-core/Cargo.toml"),
+                    rustWorkspaceDir.file("earix-core/uniffi.toml"),
+                )
                 outputs.file(builtLibrary)
 
-                doFirst {
-                    check(File(linker).isFile) {
-                        "Android NDK linker not found at '$linker'. Install NDK $rustNdkVersion " +
-                            "(sdkmanager \"ndk;$rustNdkVersion\"), set ANDROID_NDK_HOME, or build " +
-                            "without the Rust core using -PskipRustBuild=true."
-                    }
-                }
-
-                onlyIf("Rust build enabled (-PskipRustBuild is not true)") { !skipRustBuild.get() }
+                // -PskipRustBuild=true keeps the module buildable without a Rust/NDK toolchain; the
+                // app then simply uses the Kotlin parser at runtime.
+                enabled = !skipRustBuild
             }
 
         tasks.register<Copy>("stageRust${suffix}") {
@@ -156,7 +159,7 @@ val rustStageTasks =
             dependsOn(cargoTask)
             from(builtLibrary)
             into(stagedDir)
-            onlyIf("Rust build enabled (-PskipRustBuild is not true)") { !skipRustBuild.get() }
+            enabled = !skipRustBuild
         }
     }
 
